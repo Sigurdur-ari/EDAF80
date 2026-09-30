@@ -402,9 +402,9 @@ bonobo::loadTexture2D(std::string const& filename, bool generate_mipmap)
 
 GLuint
 bonobo::loadTextureCubeMap(std::string const& posx, std::string const& negx,
-                           std::string const& posy, std::string const& negy,
-                           std::string const& posz, std::string const& negz,
-                           bool generate_mipmap)
+						   std::string const& posy, std::string const& negy,
+						   std::string const& posz, std::string const& negz,
+						   bool generate_mipmap)
 {
 	GLuint texture = 0u;
 	// Create an OpenGL texture object. Similarly to `glGenVertexArrays()`
@@ -453,14 +453,14 @@ bonobo::loadTextureCubeMap(std::string const& posx, std::string const& negx,
 	// start by filling the face sitting on the negative side of the
 	// x-axis by specifying GL_TEXTURE_CUBE_MAP_NEGATIVE_X.
 	glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_X,
-	             /* mipmap level, you'll see that in EDAN35 */0,
-	             /* how are the components internally stored */GL_RGBA,
-	             /* the width of the cube map's face */static_cast<GLsizei>(width_neg_x),
-	             /* the height of the cube map's face */static_cast<GLsizei>(height_neg_x),
-	             /* must always be 0 */0,
-	             /* the format of the pixel data: which components are available */GL_RGBA,
-	             /* the type of each component */GL_UNSIGNED_BYTE,
-	             /* the pointer to the actual data on the CPU */reinterpret_cast<GLvoid const*>(data_neg_x.data()));
+				 /* mipmap level, you'll see that in EDAN35 */0,
+				 /* how are the components internally stored */GL_RGBA,
+				 /* the width of the cube map's face */static_cast<GLsizei>(width_neg_x),
+				 /* the height of the cube map's face */static_cast<GLsizei>(height_neg_x),
+				 /* must always be 0 */0,
+				 /* the format of the pixel data: which components are available */GL_RGBA,
+				 /* the type of each component */GL_UNSIGNED_BYTE,
+				 /* the pointer to the actual data on the CPU */reinterpret_cast<GLvoid const*>(data_neg_x.data()));
 
 	//! \todo repeat now the texture filling for the 5 remaining faces
 	//!

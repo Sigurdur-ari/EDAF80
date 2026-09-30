@@ -62,12 +62,78 @@ edaf80::Assignment4::run()
 	// Todo: Insert the creation of other shader programs.
 	//       (Check how it was done in assignment 3.)
 	//
+	
+	// Skybox shaders
+	GLuint skybox_shader = 0u;
+	program_manager.CreateAndRegisterProgram("Skybox",
+											 {	{ShaderType::vertex, "EDAF80/skybox.vert"},
+												{ShaderType::fragment, "EDAF80/skybox.frag"}},
+											 skybox_shader);
+	
+	if(skybox_shader == 0u)
+		LogError("Failed to load skybox shader");
+	
+	
+	// Water shaders
+	GLuint water_shader = 0u;
+	program_manager.CreateAndRegisterProgram("Water",
+											 {	{ShaderType::vertex, "EDAF80/water.vert"},
+												{ShaderType::fragment, "EDAF80/water.frag"}},
+											 water_shader);
+	if(water_shader == 0u)
+		LogError("Failed to load water shader");
 
+	
+	//Water uniforms
 	float elapsed_time_s = 0.0f;
+	auto const water_set_uniforms = [&elapsed_time_s, &camera_position](GLuint program){
+		glUniform1f(glGetUniformLocation(program, "t"), elapsed_time_s);
+		glUniform3fv(glGetUniformLocation(program, "camera_position"), 1, glm::value_ptr(camera_position));
+	};
+	
+	
+	// Upload skybox textures
+	GLuint skybox_texture = bonobo::loadTextureCubeMap(config::resources_path("cubemaps/NissiBeach2/posx.jpg"),
+													 config::resources_path("cubemaps/NissiBeach2/negx.jpg"),
+													 config::resources_path("cubemaps/NissiBeach2/posy.jpg"),
+													 config::resources_path("cubemaps/NissiBeach2/negy.jpg"),
+													 config::resources_path("cubemaps/NissiBeach2/posz.jpg"),
+													 config::resources_path("cubemaps/NissiBeach2/negz.jpg"));
+	
+	// Upload normal mapping texture
+	GLuint water_texture = bonobo::loadTexture2D(config::resources_path("textures/waves.png"));
 
 	//
 	// Todo: Load your geometry
 	//
+	
+	// Skybox
+	auto skybox_shape = parametric_shapes::createSphere(150.0f, 1000u, 1000u);
+	if (skybox_shape.vao == 0u) {
+		LogError("Failed to retrieve the mesh for the skybox");
+		return;
+	}
+
+	Node skybox;
+	skybox.set_geometry(skybox_shape);
+	skybox.set_program(&skybox_shader, water_set_uniforms);
+	skybox.add_texture("skybox_texture", skybox_texture, GL_TEXTURE_CUBE_MAP);
+	
+	
+	// Create quad for waves
+	auto const shape = parametric_shapes::createQuad(100.0f, 100.0f ,1000, 1000);
+	
+	if (shape.vao == 0u)
+		return;
+	
+	// Create wave node
+	auto waves = Node();
+	waves.set_geometry(shape);
+	waves.set_program(&water_shader, water_set_uniforms);
+	waves.add_texture("skybox_texture", skybox_texture, GL_TEXTURE_CUBE_MAP);
+	waves.add_texture("wave_texture", water_texture, GL_TEXTURE_2D);
+
+	
 
 	glClearDepthf(1.0f);
 	glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
@@ -107,6 +173,12 @@ edaf80::Assignment4::run()
 			mCamera.mWorld.LookAt(glm::vec3(0.0f));
 		}
 		camera_position = mCamera.mWorld.GetTranslation();
+		
+		//Update time variable
+		elapsed_time_s += std::chrono::duration<float>(deltaTimeUs).count();
+		
+		// Make skybox "infinite"
+		skybox.get_transform().SetTranslate(camera_position);
 
 		if (inputHandler.GetKeycodeState(GLFW_KEY_R) & JUST_PRESSED) {
 			shader_reload_failed = !program_manager.ReloadAllPrograms();
@@ -150,6 +222,8 @@ edaf80::Assignment4::run()
 			//
 			// Todo: Render all your geometry here.
 			//
+			skybox.render(mCamera.GetWorldToClipMatrix());
+			waves.render(mCamera.GetWorldToClipMatrix());
 		}
 
 

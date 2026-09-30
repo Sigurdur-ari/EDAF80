@@ -43,12 +43,16 @@ void
 edaf80::Assignment2::run()
 {
 	// Load the sphere geometry
-	auto const shape = parametric_shapes::createCircleRing(2.0f, 0.75f, 40u, 4u);
+	//auto const shape = parametric_shapes::createCircleRing(2.0f, 0.75f, 40u, 4u);
+	auto const shape = parametric_shapes::createSphere(0.15f, 10u, 10u);
 	if (shape.vao == 0u)
 		return;
 
 	// Set up the camera
 	mCamera.mWorld.SetTranslate(glm::vec3(0.0f, 1.0f, 9.0f));
+	//Rotate for ex 2
+	//mCamera.mWorld.SetRotateX(glm::half_pi<float>());
+	
 	mCamera.mMouseSensitivity = glm::vec2(0.003f);
 	mCamera.mMovementSpeed = glm::vec3(3.0f); // 3 m/s => 10.8 km/h
 
@@ -123,6 +127,8 @@ edaf80::Assignment2::run()
 
 	// Set whether to show the control points or not; it can always be changed
 	// at runtime through the "Scene Controls" window.
+	
+	//COMMENTING OUT RENDERING OF CONTROL POINT FOR EX 2, set to false
 	bool show_control_points = true;
 
 	auto circle_rings = Node();
@@ -216,16 +222,91 @@ edaf80::Assignment2::run()
 		if (interpolate) {
 			//! \todo Interpolate the movement of a shape between various
 			//!        control points.
+			
+			//Get the elapsed time as an int value
+			int time = std::floor(elapsed_time_s);
+			
+			//Calculate the index point by calculating the modulus of point amount with the time.
+			int const point_index = time % (control_points.size());
+			
+			//Calculate the x position by taking elapsed time and subtrracting the whole number from it, leaving us with a float between 0 and 1.
+			float const x = elapsed_time_s - time;
+			
+			//Initialize the interpolation translation value
+			glm::vec3 t;
+
+			
 			if (use_linear) {
 				//! \todo Compute the interpolated position
 				//!       using the linear interpolation.
+				
+				//Create p0 from the point index
+				glm::vec3 p0 = control_point_locations[point_index];
+				//Check if the next index goes out of bounds, if so loop back to 0.
+				int p = 0;
+				if(point_index == control_points.size() -1){
+					p = 0;
+				}
+				else{
+					p = point_index + 1;
+				}
+				//Create p0 from the checked new index.
+				glm::vec3 p1 = control_point_locations[p];
+				
+				//calculate the interpolation
+				t = interpolation::evalLERP(p0, p1, x);
+
 			}
 			else {
 				//! \todo Compute the interpolated position
 				//!       using the Catmull-Rom interpolation;
 				//!       use the `catmull_rom_tension`
 				//!       variable as your tension argument.
+			
+				//Calculate p1 since it will never be out of bounds due to mod calculations
+				glm::vec3 p1 = control_point_locations[point_index];
+				
+				//Initialize indices for p0, p2 and p3
+				int p0_idx = 0;
+				int p2_idx = 0;
+				int p3_idx = 0;
+				
+				//Check case where point_index is at the end of array
+				if(point_index == control_points.size() -1){
+					p0_idx = point_index - 1;
+					p2_idx = 0;
+					p3_idx = 1;
+				}
+				//Check case where point_index is at the second to last element of array
+				else if(point_index == control_points.size() -2){
+					p0_idx = point_index - 1;
+					p2_idx = point_index + 1;
+					p3_idx = 0;
+				}
+				//Check case where point_index is at the start of array
+				else if(point_index == 0){
+					//MAYBE SHOULD JUST BE 0?
+					p0_idx = control_points.size() - 1;
+					p2_idx = point_index + 1;
+					p3_idx = point_index + 2;
+				}
+				//Base case when it's safe that the indices will not point out of bounds
+				else{
+					p0_idx = point_index - 1;
+					p2_idx = point_index + 1;
+					p3_idx = point_index + 2;
+				}
+				glm::vec3 p0 = control_point_locations[p0_idx];
+				glm::vec3 p2 = control_point_locations[p2_idx];
+				glm::vec3 p3 = control_point_locations[p3_idx];
+				
+				t = interpolation::evalCatmullRom(p0, p1, p2, p3, catmull_rom_tension, x);
+				
+				
+
 			}
+			circle_rings.get_transform().SetTranslate(t);
+			
 		}
 
 		circle_rings.render(mCamera.GetWorldToClipMatrix());
@@ -234,6 +315,7 @@ edaf80::Assignment2::run()
 				control_point.render(mCamera.GetWorldToClipMatrix());
 			}
 		}
+
 
 		bool const opened = ImGui::Begin("Scene Controls", nullptr, ImGuiWindowFlags_None);
 		if (opened) {

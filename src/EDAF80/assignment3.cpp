@@ -83,18 +83,63 @@ edaf80::Assignment3::run()
 	if (texcoord_shader == 0u)
 		LogError("Failed to load texcoord shader");
 
+	//Regular uniforms
 	auto light_position = glm::vec3(-2.0f, 4.0f, 2.0f);
-	auto const set_uniforms = [&light_position](GLuint program){
-		glUniform3fv(glGetUniformLocation(program, "light_position"), 1, glm::value_ptr(light_position));
-	};
-
-	bool use_normal_mapping = false;
 	auto camera_position = mCamera.mWorld.GetTranslation();
+	
+	auto const set_uniforms = [&light_position,&camera_position](GLuint program){
+		glUniform3fv(glGetUniformLocation(program, "light_position"), 1, glm::value_ptr(light_position));
+		//Add camera position to uniforms to assist with skybox
+		glUniform3fv(glGetUniformLocation(program, "camera_position"), 1, glm::value_ptr(camera_position));
+	};
+	
+	
+	//Phong uniforms
+	bool use_normal_mapping = false;
 	auto const phong_set_uniforms = [&use_normal_mapping,&light_position,&camera_position](GLuint program){
 		glUniform1i(glGetUniformLocation(program, "use_normal_mapping"), use_normal_mapping ? 1 : 0);
 		glUniform3fv(glGetUniformLocation(program, "light_position"), 1, glm::value_ptr(light_position));
 		glUniform3fv(glGetUniformLocation(program, "camera_position"), 1, glm::value_ptr(camera_position));
 	};
+	
+	// My shaders and uniforms
+	
+	// Upload skybox textures
+	GLuint skybox_texture = bonobo::loadTextureCubeMap(config::resources_path("cubemaps/NissiBeach2/posx.jpg"),
+													 config::resources_path("cubemaps/NissiBeach2/negx.jpg"),
+													 config::resources_path("cubemaps/NissiBeach2/posy.jpg"),
+													 config::resources_path("cubemaps/NissiBeach2/negy.jpg"),
+													 config::resources_path("cubemaps/NissiBeach2/posz.jpg"),
+													 config::resources_path("cubemaps/NissiBeach2/negz.jpg"));
+	
+	//Upload sphere textures
+	
+	GLuint diffuse_texture = bonobo::loadTexture2D(config::resources_path("textures/leather_red_02_coll1_2k.jpg"));
+	
+	GLuint specular_map = bonobo::loadTexture2D(config::resources_path("textures/leather_red_02_rough_2k.jpg"));
+	
+	GLuint normal_map = bonobo::loadTexture2D(config::resources_path("textures/leather_red_02_nor_2k.jpg"));
+	
+	
+	// Skybox shaders
+	GLuint skybox_shader = 0u;
+	program_manager.CreateAndRegisterProgram("Skybox",
+											 {	{ShaderType::vertex, "EDAF80/skybox.vert"},
+												{ShaderType::fragment, "EDAF80/skybox.frag"}},
+											 skybox_shader);
+	
+	if(skybox_shader == 0u)
+		LogError("Failed to load skybox shader");
+	
+	
+	// Phong shaders
+	GLuint phong_shader = 0u;
+	program_manager.CreateAndRegisterProgram("Phong",
+											 {	{ShaderType::vertex, "EDAF80/phong.vert"},
+												{ShaderType::fragment, "EDAF80/phong.frag"}},
+											 phong_shader);
+	if(phong_shader == 0u)
+		LogError("Failed to load phong shader");
 
 
 	//
@@ -108,14 +153,16 @@ edaf80::Assignment3::run()
 
 	Node skybox;
 	skybox.set_geometry(skybox_shape);
-	skybox.set_program(&fallback_shader, set_uniforms);
+	skybox.set_program(&skybox_shader, set_uniforms);
+	skybox.add_texture("skybox_texture", skybox_texture, GL_TEXTURE_CUBE_MAP);
 
 	auto demo_shape = parametric_shapes::createSphere(1.5f, 40u, 40u);
 	if (demo_shape.vao == 0u) {
 		LogError("Failed to retrieve the mesh for the demo sphere");
 		return;
 	}
-
+	
+	// Set the material constants for the sphere
 	bonobo::material_data demo_material;
 	demo_material.ambient = glm::vec3(0.1f, 0.1f, 0.1f);
 	demo_material.diffuse = glm::vec3(0.7f, 0.2f, 0.4f);
@@ -125,7 +172,13 @@ edaf80::Assignment3::run()
 	Node demo_sphere;
 	demo_sphere.set_geometry(demo_shape);
 	demo_sphere.set_material_constants(demo_material);
-	demo_sphere.set_program(&fallback_shader, phong_set_uniforms);
+	demo_sphere.set_program(&phong_shader, phong_set_uniforms);
+	
+	//Add textures to the sphere
+	demo_sphere.add_texture("diffuse_texture", diffuse_texture, GL_TEXTURE_2D);
+	demo_sphere.add_texture("specular_map", specular_map, GL_TEXTURE_2D);
+	demo_sphere.add_texture("normal_map", normal_map, GL_TEXTURE_2D);
+	
 
 
 	glClearDepthf(1.0f);
@@ -163,6 +216,8 @@ edaf80::Assignment3::run()
 			mCamera.mWorld.LookAt(glm::vec3(0.0f));
 		}
 		camera_position = mCamera.mWorld.GetTranslation();
+		
+		skybox.get_transform().SetTranslate(camera_position);
 
 		if (inputHandler.GetKeycodeState(GLFW_KEY_R) & JUST_PRESSED) {
 			shader_reload_failed = !program_manager.ReloadAllPrograms();

@@ -1,4 +1,4 @@
-﻿cmake_minimum_required (VERSION 3.13)
+cmake_minimum_required (VERSION 3.13)
 
 # Workaround for the lab computers
 if (WIN32)
@@ -46,7 +46,7 @@ endif ()
 set (LUGGCGL_ASSIMP_MIN_VERSION 5.4.3)
 set (LUGGCGL_ASSIMP_DOWNLOAD_VERSION 5.4.3)
 include (CMake/InstallAssimp.cmake)
-find_package (assimp ${LUGGCGL_ASSIMP_MIN_VERSION} REQUIRED)
+find_package (assimp REQUIRED)
 link_directories (${ASSIMP_LIBRARY_DIRS})
 
 # GLFW is used for inputs and windows handling
@@ -58,7 +58,7 @@ find_package (glfw3 ${LUGGCGL_GLFW_MIN_VERSION} REQUIRED)
 # GLM is used for matrices, vectors and camera handling
 set (LUGGCGL_GLM_DOWNLOAD_VERSION 0.9.9.5)
 include (CMake/InstallGLM.cmake)
-find_package (glm ${LUGGCGL_GLM_DOWNLOAD_VERSION} EXACT REQUIRED)
+find_package (glm REQUIRED)
 
 # TinyFileDialogs is used for displaying error popups.
 include (CMake/InstallTinyFileDialogs.cmake)
