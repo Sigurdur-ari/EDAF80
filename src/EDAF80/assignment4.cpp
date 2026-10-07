@@ -86,9 +86,15 @@ edaf80::Assignment4::run()
 	
 	//Water uniforms
 	float elapsed_time_s = 0.0f;
-	auto const water_set_uniforms = [&elapsed_time_s, &camera_position](GLuint program){
+	bool use_normal_mapping = true;
+	bool use_reflection = true;
+	bool use_refraction = true;
+	auto const water_set_uniforms = [&elapsed_time_s, &camera_position, &use_normal_mapping, &use_reflection, &use_refraction](GLuint program){
 		glUniform1f(glGetUniformLocation(program, "t"), elapsed_time_s);
 		glUniform3fv(glGetUniformLocation(program, "camera_position"), 1, glm::value_ptr(camera_position));
+		glUniform1i(glGetUniformLocation(program, "use_normal_mapping"), use_normal_mapping ? 1 : 0);
+		glUniform1i(glGetUniformLocation(program, "use_reflection"), use_reflection ? 1 : 0);
+		glUniform1i(glGetUniformLocation(program, "use_refraction"), use_refraction ? 1 : 0);
 	};
 	
 	
@@ -130,6 +136,7 @@ edaf80::Assignment4::run()
 	auto waves = Node();
 	waves.set_geometry(shape);
 	waves.set_program(&water_shader, water_set_uniforms);
+	waves.get_transform().SetTranslate(glm::vec3(-50.0f, 0.0f, -50.0f));
 	waves.add_texture("skybox_texture", skybox_texture, GL_TEXTURE_CUBE_MAP);
 	waves.add_texture("wave_texture", water_texture, GL_TEXTURE_2D);
 
@@ -222,7 +229,9 @@ edaf80::Assignment4::run()
 			//
 			// Todo: Render all your geometry here.
 			//
+			glDisable(GL_DEPTH_TEST);
 			skybox.render(mCamera.GetWorldToClipMatrix());
+			glEnable(GL_DEPTH_TEST);
 			waves.render(mCamera.GetWorldToClipMatrix());
 		}
 
@@ -249,6 +258,10 @@ edaf80::Assignment4::run()
 			ImGui::Checkbox("Show basis", &show_basis);
 			ImGui::SliderFloat("Basis thickness scale", &basis_thickness_scale, 0.0f, 100.0f);
 			ImGui::SliderFloat("Basis length scale", &basis_length_scale, 0.0f, 100.0f);
+			
+			ImGui::Checkbox("Use reflections", &use_reflection);
+			ImGui::Checkbox("Use normal mapping", &use_normal_mapping);
+			ImGui::Checkbox("Use refraction", &use_refraction);
 		}
 		ImGui::End();
 

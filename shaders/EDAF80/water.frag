@@ -10,6 +10,10 @@ uniform vec3 camera_position;
 uniform samplerCube skybox_texture;
 uniform sampler2D wave_texture;
 
+uniform bool use_normal_mapping;
+uniform bool use_reflection;
+uniform bool use_refraction;
+
 uniform float t;
 
 in VS_OUT {
@@ -31,43 +35,64 @@ void main()
 	vec3 n = normalize(fs_in.normal);
 	vec3 V = normalize(camera_position - fs_in.vertex);
 
-	
-	// Normal mapping
-	vec2 texScale = vec2(8, 4);
-	float normalTime = mod(t, 100.0);
-	vec2 normalSpeed = vec2(-0.05, 0.0);
 
-	vec2 normalCoord0 = fs_in.tex_coords.xz * texScale + normalTime * normalSpeed;
-	vec2 normalCoord1 = fs_in.tex_coords.xz * texScale * 2 + normalTime * normalSpeed * 4;
-	vec2 normalCoord2 = fs_in.tex_coords.xz * texScale * 4 + normalTime * normalSpeed * 8;
+	if(use_normal_mapping){
+		// Normal mapping
+		vec2 texScale = vec2(8, 4);
+		float normalTime = mod(t, 100.0);
+		vec2 normalSpeed = vec2(-0.05, 0.0);
+
+		vec2 normalCoord0 = fs_in.tex_coords.xz * texScale + normalTime * normalSpeed;
+		vec2 normalCoord1 = fs_in.tex_coords.xz * texScale * 2 + normalTime * normalSpeed * 4;
+		vec2 normalCoord2 = fs_in.tex_coords.xz * texScale * 4 + normalTime * normalSpeed * 8;
+		
+		
+		vec4 n0 = texture(wave_texture, normalCoord0) * 2 - 1;
+		vec4 n1 = texture(wave_texture, normalCoord1) * 2 - 1;
+		vec4 n2 = texture(wave_texture, normalCoord2) * 2 - 1;
+		
+		vec3 n_bump = normalize(n0.xyz + n1.xyz + n2.xyz);
+		
+		// Create the TBN matrix used in normal mapping
+		mat3 TBN = mat3(fs_in.tangent, fs_in.binormal, fs_in.normal);
+		
+		// Update n after normal mapping
+		n = normalize(TBN * n_bump);
+	}
 	
+	vec4 reflection = vec4(0.0);
+	if(use_reflection){
+		// Reflections
+		vec3 R = reflect(-V, n);
+		reflection = texture(skybox_texture, normalize(R));
+	}
 	
-	vec4 n0 = texture(wave_texture, normalCoord0) * 2 - 1;
-	vec4 n1 = texture(wave_texture, normalCoord1) * 2 - 1;
-	vec4 n2 = texture(wave_texture, normalCoord2) * 2 - 1;
-	
-	vec3 n_bump = normalize(n0.xyz + n1.xyz + n2.xyz);
-	
-	// Create the TBN matrix used in normal mapping
-	mat3 TBN = mat3(fs_in.tangent, fs_in.binormal, fs_in.normal);
-	
-	// Update n after normal mapping
-	n = normalize(TBN * n_bump);
-	
-	// Reflections
-	vec3 R = reflect(-V, n);
-	vec4 reflection = texture(skybox_texture, normalize(R));
 	
 	// Fresnel
 	float R_0 = 0.02037;
+	// Reverse the normal if we are not looking at the top side of the vertex
+	if(!gl_FrontFacing){
+		n = -n;
+	}
 	float fresnel = R_0 + (1 - R_0) * pow((1 - dot(V, n)), 5);
 	
-	// Refraction
-	float eta = 1.0/1.33;
-	vec3 refract_vector = refract(-V, n, eta);
-	vec4 refraction = texture(skybox_texture, normalize(refract_vector));
+	vec4 refraction = vec4(0.0);
+	float eta;
+	if(use_refraction){
+		// Refraction
+		// Calculate the eta value based on if we are looking at the vertex from the top or bottom. 
+		if(gl_FrontFacing){
+			eta = 1.0/1.33;
+		}
+		else{
+			eta = 1.33/1.0;
+		}
+		vec3 refract_vector = refract(-V, n, eta);
+		refraction = texture(skybox_texture, normalize(refract_vector));
+	}
 	
-	// Calculate facing value after all initializations of n
+	
+	// Calculate facing value after all possible initializations of n
 	float facing = 1 - max(dot(V, n), 0);
 	
 	water_color = mix(color_deep, color_shallow, facing)
