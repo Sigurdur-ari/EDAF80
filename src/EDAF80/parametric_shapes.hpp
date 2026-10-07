@@ -99,4 +99,11 @@ namespace parametric_shapes
 	                                   float const spread_length,
 	                                   unsigned int const circle_split_count,
 	                                   unsigned int const spread_split_count);
+	//! \brief Create a cube a given the size and make it
+	//!        available to OpenGL.
+	//!
+	//! @param size size of the cube
+	//! @return wrapper around OpenGL objects' name containing the geometry
+	//!         data
+	bonobo::mesh_data createCube(float const size);
 }

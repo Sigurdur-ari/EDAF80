@@ -62,12 +62,12 @@ void FPSCamera<T, P>::Update(std::chrono::microseconds deltaTime, InputHandler &
 
 	if (!ih.IsKeyboardCapturedByUI() && !ignoreKeyEvents) {
 		T move = 0.0f, strafe = 0.0f, levitate = 0.0f;
-		if ((ih.GetKeycodeState(GLFW_KEY_W) & PRESSED)) move += 1.0f;
-		if ((ih.GetKeycodeState(GLFW_KEY_S) & PRESSED)) move -= 1.0f;
+		//if ((ih.GetKeycodeState(GLFW_KEY_W) & PRESSED)) move += 1.0f;
+		//if ((ih.GetKeycodeState(GLFW_KEY_S) & PRESSED)) move -= 1.0f;
 		if ((ih.GetKeycodeState(GLFW_KEY_A) & PRESSED)) strafe -= 1.0f;
 		if ((ih.GetKeycodeState(GLFW_KEY_D) & PRESSED)) strafe += 1.0f;
-		if ((ih.GetKeycodeState(GLFW_KEY_Q) & PRESSED)) levitate -= 1.0f;
-		if ((ih.GetKeycodeState(GLFW_KEY_E) & PRESSED)) levitate += 1.0f;
+		//if ((ih.GetKeycodeState(GLFW_KEY_Q) & PRESSED)) levitate -= 1.0f;
+		//if ((ih.GetKeycodeState(GLFW_KEY_E) & PRESSED)) levitate += 1.0f;
 
 		T const movementModifier = ((ih.GetKeycodeState(GLFW_KEY_LEFT_CONTROL) & PRESSED)) ? 0.25f : ((ih.GetKeycodeState(GLFW_KEY_LEFT_SHIFT) & PRESSED)) ? 4.0f : 1.0f;
 		auto const deltaTime_s = std::chrono::duration<T>(deltaTime);

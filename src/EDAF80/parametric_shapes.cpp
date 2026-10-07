@@ -455,3 +455,202 @@ parametric_shapes::createCircleRing(float const radius,
 
 	return data;
 }
+
+bonobo::mesh_data
+parametric_shapes::createCube(float const size)
+{
+	
+	auto const half = size/2.0f;
+	
+	auto vertices  = std::vector<glm::vec3>();
+	auto normals   = std::vector<glm::vec3>();
+	auto texcoords = std::vector<glm::vec3>();
+	auto tangents  = std::vector<glm::vec3>();
+	auto binormals = std::vector<glm::vec3>();
+	
+	
+	//Calculate vertices
+	// Front face (+Z)
+	vertices.push_back(glm::vec3(-half, -half,  half));
+	vertices.push_back(glm::vec3( half, -half,  half));
+	vertices.push_back(glm::vec3( half,  half,  half));
+	vertices.push_back(glm::vec3(-half,  half,  half));
+
+	// Back face (-Z)
+	vertices.push_back(glm::vec3( half, -half, -half));
+	vertices.push_back(glm::vec3(-half, -half, -half));
+	vertices.push_back(glm::vec3(-half,  half, -half));
+	vertices.push_back(glm::vec3( half,  half, -half));
+
+	// Left face (-X)
+	vertices.push_back(glm::vec3(-half, -half, -half));
+	vertices.push_back(glm::vec3(-half, -half,  half));
+	vertices.push_back(glm::vec3(-half,  half,  half));
+	vertices.push_back(glm::vec3(-half,  half, -half));
+
+	// Right face (+X)
+	vertices.push_back(glm::vec3( half, -half,  half));
+	vertices.push_back(glm::vec3( half, -half, -half));
+	vertices.push_back(glm::vec3( half,  half, -half));
+	vertices.push_back(glm::vec3( half,  half,  half));
+
+	// Up face (+Y)
+	vertices.push_back(glm::vec3(-half,  half,  half));
+	vertices.push_back(glm::vec3( half,  half,  half));
+	vertices.push_back(glm::vec3( half,  half, -half));
+	vertices.push_back(glm::vec3(-half,  half, -half));
+
+	// Down face (-Y)
+	vertices.push_back(glm::vec3(-half, -half, -half));
+	vertices.push_back(glm::vec3( half, -half, -half));
+	vertices.push_back(glm::vec3( half, -half,  half));
+	vertices.push_back(glm::vec3(-half, -half,  half));
+	
+	//Generate indices
+	auto index_sets = std::vector<glm::uvec3>(12u);
+
+	size_t index = 0u;
+
+	for (unsigned int i = 0u; i < 6u; ++i)
+	{
+		unsigned int const base = i * 4u;
+
+		index_sets[index] = glm::uvec3(base + 0u, base + 1u, base + 2u);
+		++index;
+
+		index_sets[index] = glm::uvec3(base + 0u, base + 2u, base + 3u);
+		++index;
+	}
+	
+	//Normals
+	// Front face (+Z)
+	normals.push_back(glm::vec3(0.0f, 0.0f, 1.0f));
+	normals.push_back(glm::vec3(0.0f, 0.0f, 1.0f));
+	normals.push_back(glm::vec3(0.0f, 0.0f, 1.0f));
+	normals.push_back(glm::vec3(0.0f, 0.0f, 1.0f));
+
+	// Back face (-Z)
+	normals.push_back(glm::vec3(0.0f, 0.0f, -1.0f));
+	normals.push_back(glm::vec3(0.0f, 0.0f, -1.0f));
+	normals.push_back(glm::vec3(0.0f, 0.0f, -1.0f));
+	normals.push_back(glm::vec3(0.0f, 0.0f, -1.0f));
+
+	// Left face (-X)
+	normals.push_back(glm::vec3(-1.0f, 0.0f, 0.0f));
+	normals.push_back(glm::vec3(-1.0f, 0.0f, 0.0f));
+	normals.push_back(glm::vec3(-1.0f, 0.0f, 0.0f));
+	normals.push_back(glm::vec3(-1.0f, 0.0f, 0.0f));
+
+	// Right face (+X)
+	normals.push_back(glm::vec3(1.0f, 0.0f, 0.0f));
+	normals.push_back(glm::vec3(1.0f, 0.0f, 0.0f));
+	normals.push_back(glm::vec3(1.0f, 0.0f, 0.0f));
+	normals.push_back(glm::vec3(1.0f, 0.0f, 0.0f));
+
+	// Up face (+Y)
+	normals.push_back(glm::vec3(0.0f, 1.0f, 0.0f));
+	normals.push_back(glm::vec3(0.0f, 1.0f, 0.0f));
+	normals.push_back(glm::vec3(0.0f, 1.0f, 0.0f));
+	normals.push_back(glm::vec3(0.0f, 1.0f, 0.0f));
+
+	// Down face (-Y)
+	normals.push_back(glm::vec3(0.0f, -1.0f, 0.0f));
+	normals.push_back(glm::vec3(0.0f, -1.0f, 0.0f));
+	normals.push_back(glm::vec3(0.0f, -1.0f, 0.0f));
+	normals.push_back(glm::vec3(0.0f, -1.0f, 0.0f));
+	
+	
+	
+	// Texture coordinates
+	// Front face (+Z)
+	texcoords.push_back(glm::vec3(0.0f, 0.0f, 0.0f));
+	texcoords.push_back(glm::vec3(1.0f, 0.0f, 0.0f));
+	texcoords.push_back(glm::vec3(1.0f, 1.0f, 0.0f));
+	texcoords.push_back(glm::vec3(0.0f, 1.0f, 0.0f));
+
+	// Back face (-Z)
+	texcoords.push_back(glm::vec3(0.0f, 0.0f, 0.0f));
+	texcoords.push_back(glm::vec3(1.0f, 0.0f, 0.0f));
+	texcoords.push_back(glm::vec3(1.0f, 1.0f, 0.0f));
+	texcoords.push_back(glm::vec3(0.0f, 1.0f, 0.0f));
+
+	// Left face (-X)
+	texcoords.push_back(glm::vec3(0.0f, 0.0f, 0.0f));
+	texcoords.push_back(glm::vec3(1.0f, 0.0f, 0.0f));
+	texcoords.push_back(glm::vec3(1.0f, 1.0f, 0.0f));
+	texcoords.push_back(glm::vec3(0.0f, 1.0f, 0.0f));
+
+	// Right face (+X)
+	texcoords.push_back(glm::vec3(0.0f, 0.0f, 0.0f));
+	texcoords.push_back(glm::vec3(1.0f, 0.0f, 0.0f));
+	texcoords.push_back(glm::vec3(1.0f, 1.0f, 0.0f));
+	texcoords.push_back(glm::vec3(0.0f, 1.0f, 0.0f));
+
+	// Up face (+Y)
+	texcoords.push_back(glm::vec3(0.0f, 0.0f, 0.0f));
+	texcoords.push_back(glm::vec3(1.0f, 0.0f, 0.0f));
+	texcoords.push_back(glm::vec3(1.0f, 1.0f, 0.0f));
+	texcoords.push_back(glm::vec3(0.0f, 1.0f, 0.0f));
+
+	// Down face (-Y)
+	texcoords.push_back(glm::vec3(0.0f, 0.0f, 0.0f));
+	texcoords.push_back(glm::vec3(1.0f, 0.0f, 0.0f));
+	texcoords.push_back(glm::vec3(1.0f, 1.0f, 0.0f));
+	texcoords.push_back(glm::vec3(0.0f, 1.0f, 0.0f));
+	
+	
+	bonobo::mesh_data data;
+	//Create a vertex array object and bind it
+	glGenVertexArrays(1, &data.vao);
+	assert(data.vao != 0u);
+	glBindVertexArray(data.vao);
+
+	//Find sizes and offset values
+	auto const vertices_offset = 0u;
+	auto const vertices_size = static_cast<GLsizeiptr>(vertices.size() * sizeof(glm::vec3));
+	auto const normals_offset = vertices_size;
+	auto const normals_size = static_cast<GLsizeiptr>(normals.size() * sizeof(glm::vec3));
+	auto const texcoords_offset = normals_offset + normals_size;
+	auto const texcoords_size = static_cast<GLsizeiptr>(texcoords.size() * sizeof(glm::vec3));
+	auto const bo_size = static_cast<GLsizeiptr>(vertices_size
+												+normals_size
+												+texcoords_size);
+	
+	//Create a buffer object and bind it. Initialize it with no value but include the combined size of all arrays calculated above.
+	glGenBuffers(1, &data.bo);
+	assert(data.bo != 0u);
+	glBindBuffer(GL_ARRAY_BUFFER, data.bo);
+	glBufferData(GL_ARRAY_BUFFER, bo_size, nullptr, GL_STATIC_DRAW);
+	
+	//Add vertices to the buffer
+	glBufferSubData(GL_ARRAY_BUFFER, vertices_offset, vertices_size, static_cast<GLvoid const*>(vertices.data()));
+	glEnableVertexAttribArray(static_cast<unsigned int>(bonobo::shader_bindings::vertices));
+	glVertexAttribPointer(static_cast<unsigned int>(bonobo::shader_bindings::vertices), 3, GL_FLOAT, GL_FALSE, 0, reinterpret_cast<GLvoid const*>(0x0));
+
+	//Add normals to the buffer, offset by the size of vertices
+	glBufferSubData(GL_ARRAY_BUFFER, normals_offset, normals_size, static_cast<GLvoid const*>(normals.data()));
+	glEnableVertexAttribArray(static_cast<unsigned int>(bonobo::shader_bindings::normals));
+	glVertexAttribPointer(static_cast<unsigned int>(bonobo::shader_bindings::normals), 3, GL_FLOAT, GL_FALSE, 0, reinterpret_cast<GLvoid const*>(normals_offset));
+
+	//Add the texcoords to the buffer, offset by the size of vertices + normals
+	glBufferSubData(GL_ARRAY_BUFFER, texcoords_offset, texcoords_size, static_cast<GLvoid const*>(texcoords.data()));
+	glEnableVertexAttribArray(static_cast<unsigned int>(bonobo::shader_bindings::texcoords));
+	glVertexAttribPointer(static_cast<unsigned int>(bonobo::shader_bindings::texcoords), 3, GL_FLOAT, GL_FALSE, 0, reinterpret_cast<GLvoid const*>(texcoords_offset));
+
+
+	//Unbind the array buffer since data has been recorded
+	glBindBuffer(GL_ARRAY_BUFFER, 0u);
+
+	//Generate an element array buffer for the indices
+	data.indices_nb = static_cast<GLsizei>(index_sets.size() * 3u);
+	glGenBuffers(1, &data.ibo);
+	assert(data.ibo != 0u);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, data.ibo);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, static_cast<GLsizeiptr>(index_sets.size() * sizeof(glm::uvec3)), reinterpret_cast<GLvoid const*>(index_sets.data()), GL_STATIC_DRAW);
+
+	//Unbind the vertex array and element array buffer since data has been recorded.
+	glBindVertexArray(0u);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0u);
+	
+	return data;
+}

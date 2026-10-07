@@ -1,10 +1,12 @@
 #include "assignment5.hpp"
+#include "parametric_shapes.hpp"
 
 #include "config.hpp"
 #include "core/Bonobo.h"
 #include "core/FPSCamera.h"
 #include "core/helpers.hpp"
 #include "core/ShaderProgramManager.hpp"
+#include "core/node.hpp"
 
 #include <imgui.h>
 #include <tinyfiledialogs.h>
@@ -40,6 +42,7 @@ edaf80::Assignment5::run()
 	mCamera.mWorld.SetTranslate(glm::vec3(0.0f, 0.0f, 6.0f));
 	mCamera.mMouseSensitivity = glm::vec2(0.003f);
 	mCamera.mMovementSpeed = glm::vec3(3.0f); // 3 m/s => 10.8 km/h
+	auto camera_position = mCamera.mWorld.GetTranslation();
 
 	// Create the shader programs
 	ShaderProgramManager program_manager;
@@ -52,6 +55,16 @@ edaf80::Assignment5::run()
 		LogError("Failed to load fallback shader");
 		return;
 	}
+	
+	GLuint diffuse_shader = 0u;
+	program_manager.CreateAndRegisterProgram("Diffuse",
+											 { { ShaderType::vertex, "EDAF80/diffuse.vert" },
+											   { ShaderType::fragment, "EDAF80/diffuse.frag" } },
+											 diffuse_shader);
+	if (diffuse_shader == 0u) {
+		LogError("Failed to load diffuse shader");
+		return;
+	}
 
 	//
 	// Todo: Insert the creation of other shader programs.
@@ -61,6 +74,33 @@ edaf80::Assignment5::run()
 	//
 	// Todo: Load your geometry
 	//
+	
+	// Create cube for cubes
+	auto const cube_shape = parametric_shapes::createCube(1.0f);
+	
+	if (cube_shape.vao == 0u)
+		return;
+	
+	// Create cube node
+	auto cube = Node();
+	cube.set_geometry(cube_shape);
+	cube.set_program(&fallback_shader);
+	cube.get_transform().SetTranslate(glm::vec3(0.0f, 0.0f, -10.0f));
+	
+	
+	
+	// Create sphere for player
+	auto const sphere_shape = parametric_shapes::createSphere(0.1f, 10, 10);
+	
+	if (sphere_shape.vao == 0u)
+		return;
+	
+	auto sphere = Node();
+	sphere.set_geometry(sphere_shape);
+	sphere.set_program(&diffuse_shader);
+	
+	
+	
 
 	glClearDepthf(1.0f);
 	glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
@@ -124,12 +164,21 @@ edaf80::Assignment5::run()
 		mWindowManager.NewImGuiFrame();
 
 		glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
-
+		
+		camera_position = mCamera.mWorld.GetTranslation();
+		
+		// make sphere static based on camera
+		sphere.get_transform().SetTranslate(camera_position + glm::vec3(0.0f, -0.1f, -1.0f));
 
 		if (!shader_reload_failed) {
 			//
 			// Todo: Render all your geometry here.
 			//
+			for(float i = 0.0f; i < 10.0f; i += 1.0f){
+				cube.render(mCamera.GetWorldToClipMatrix());
+				cube.get_transform().SetTranslate(glm::vec3(i, i, -5.0f));
+			}
+			sphere.render(mCamera.GetWorldToClipMatrix());
 		}
 
 
