@@ -1,4 +1,6 @@
 cmake_minimum_required (VERSION 3.13)
+set (CMAKE_POLICY_VERSION_MINIMUM 3.5)
+set (ENV{CMAKE_POLICY_VERSION_MINIMUM} "3.5")
 
 # Workaround for the lab computers
 if (WIN32)
@@ -46,7 +48,7 @@ endif ()
 set (LUGGCGL_ASSIMP_MIN_VERSION 5.4.3)
 set (LUGGCGL_ASSIMP_DOWNLOAD_VERSION 5.4.3)
 include (CMake/InstallAssimp.cmake)
-find_package (assimp REQUIRED)
+find_package (assimp ${LUGGCGL_ASSIMP_MIN_VERSION} REQUIRED)
 link_directories (${ASSIMP_LIBRARY_DIRS})
 
 # GLFW is used for inputs and windows handling
@@ -58,7 +60,7 @@ find_package (glfw3 ${LUGGCGL_GLFW_MIN_VERSION} REQUIRED)
 # GLM is used for matrices, vectors and camera handling
 set (LUGGCGL_GLM_DOWNLOAD_VERSION 0.9.9.5)
 include (CMake/InstallGLM.cmake)
-find_package (glm REQUIRED)
+find_package (glm ${LUGGCGL_GLM_DOWNLOAD_VERSION} EXACT REQUIRED)
 
 # TinyFileDialogs is used for displaying error popups.
 include (CMake/InstallTinyFileDialogs.cmake)
@@ -150,7 +152,9 @@ endfunction ()
 add_subdirectory ("${CMAKE_SOURCE_DIR}/src/external")
 add_subdirectory ("${CMAKE_SOURCE_DIR}/src/core")
 add_subdirectory ("${CMAKE_SOURCE_DIR}/src/EDAF80")
-add_subdirectory ("${CMAKE_SOURCE_DIR}/src/EDAN35")
+if (EXISTS "${CMAKE_SOURCE_DIR}/src/EDAN35")
+	add_subdirectory ("${CMAKE_SOURCE_DIR}/src/EDAN35")
+endif ()
 
 install (DIRECTORY ${CMAKE_SOURCE_DIR}/shaders DESTINATION bin)
 install (DIRECTORY ${CMAKE_SOURCE_DIR}/res DESTINATION bin)
