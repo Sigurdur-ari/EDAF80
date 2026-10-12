@@ -520,7 +520,7 @@ parametric_shapes::createCube(float const size)
 
 		index_sets[index] = glm::uvec3(base + 0u, base + 2u, base + 3u);
 		++index;
-	}
+	} 
 	
 	//Normals
 	// Front face (+Z)
