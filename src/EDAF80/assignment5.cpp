@@ -69,6 +69,14 @@ edaf80::Assignment5::run()
 		LogError("Failed to load diffuse shader");
 		return;
 	}
+	
+	GLuint cube_shader = 0u;
+	program_manager.CreateAndRegisterProgram("Cube",
+											 { { ShaderType::vertex, "EDAF80/cube.vert" },
+											   { ShaderType::fragment, "EDAF80/cube.frag" } },
+											 cube_shader);
+	if (cube_shader == 0u)
+		LogError("Failed to load cube shader");
 
 	//
 	// Todo: Insert the creation of other shader programs.
@@ -108,6 +116,12 @@ edaf80::Assignment5::run()
 		auto const set_diffuse_uniforms = [](GLuint program){
 			glUniform3f(glGetUniformLocation(program, "light_position"), 0.0f, 15.0f, 10.0f);
 		};
+	
+	glm::vec3 current_color = glm::vec3( 1.0f );
+	
+	auto const set_cube_uniforms = [&current_color](GLuint program){
+		glUniform3f(glGetUniformLocation(program, "random_color"), current_color.r, current_color.g, current_color.b);
+	};
 
 	//
 	// Todo: Load your geometry
@@ -139,7 +153,7 @@ edaf80::Assignment5::run()
 
 		auto cube = Node();
 		cube.set_geometry(cube_shape);
-		cube.set_program(&diffuse_shader, set_diffuse_uniforms);
+		cube.set_program(&cube_shader, set_cube_uniforms);
 
 		auto sphere = Node();
 		sphere.set_geometry(sphere_shape);
@@ -168,6 +182,7 @@ edaf80::Assignment5::run()
 		struct Obstacle {
 			glm::vec3 position{ 0.0f };
 			glm::vec3 scale{ 1.0f };
+			glm::vec3 color{ 1.0f };
 			bool active{ false }; // hide and unhide state
 			bool moving{ false };
 			float move_base_x{ 0.0f };
@@ -198,6 +213,12 @@ edaf80::Assignment5::run()
 						obs.move_base_x = x;
 						obs.move_phase = phase;
 						obs.move_speed = 2.5f;
+						// Set the color of this obstacle to a random color
+						obs.color = glm::vec3(
+											  static_cast<float>(rand()) / RAND_MAX,
+											  static_cast<float>(rand()) / RAND_MAX,
+											  static_cast<float>(rand()) / RAND_MAX
+											  );
 						return;
 					}
 				}
@@ -435,6 +456,8 @@ edaf80::Assignment5::run()
 				if (!obs.active) continue;
 				cube.get_transform().SetTranslate(obs.position);
 				cube.get_transform().SetScale(obs.scale);
+				// Set the current random color to this cube
+				current_color = obs.color;
 				cube.render(view_proj);
 			}
 			// render player sphere
