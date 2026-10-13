@@ -113,15 +113,55 @@ edaf80::Assignment5::run()
 			config::resources_path("cubemaps/NissiBeach2/negz.jpg")
 		);
 
-		auto const set_diffuse_uniforms = [](GLuint program){
-			glUniform3f(glGetUniformLocation(program, "light_position"), 0.0f, 15.0f, 10.0f);
-		};
+	auto const set_diffuse_uniforms = [](GLuint program){
+		glUniform3f(glGetUniformLocation(program, "light_position"), 0.0f, 15.0f, 10.0f);
+	};
 	
 	glm::vec3 current_color = glm::vec3( 1.0f );
 	
 	auto const set_cube_uniforms = [&current_color](GLuint program){
 		glUniform3f(glGetUniformLocation(program, "random_color"), current_color.r, current_color.g, current_color.b);
 	};
+	
+	//Phong uniforms
+	bool use_normal_mapping = true;
+	auto const phong_set_uniforms = [&use_normal_mapping,&camera_position](GLuint program){
+		glUniform1i(glGetUniformLocation(program, "use_normal_mapping"), use_normal_mapping ? 1 : 0);
+		glUniform3f(glGetUniformLocation(program, "light_position"), 0.0f, 15.0f, 10.0f);
+		glUniform3f(glGetUniformLocation(program, "camera_position"), camera_position.x, camera_position.y, camera_position.z);
+	};
+	
+	
+	//Upload sphere textures
+	
+	GLuint diffuse_texture = bonobo::loadTexture2D(config::resources_path("textures/leather_red_02_coll1_2k.jpg"));
+	
+	GLuint specular_map = bonobo::loadTexture2D(config::resources_path("textures/leather_red_02_rough_2k.jpg"));
+	
+	GLuint normal_map = bonobo::loadTexture2D(config::resources_path("textures/leather_red_02_nor_2k.jpg"));
+	
+	// Phong shaders
+	GLuint phong_shader = 0u;
+	program_manager.CreateAndRegisterProgram("Phong",
+											 {	{ShaderType::vertex, "EDAF80/phong.vert"},
+												{ShaderType::fragment, "EDAF80/phong.frag"}},
+											 phong_shader);
+	if(phong_shader == 0u)
+		LogError("Failed to load phong shader");
+	
+	
+	// End screen shaders
+	GLuint end_screen_shader = 0u;
+	program_manager.CreateAndRegisterProgram("End Screen",
+											 {	{ShaderType::vertex, "EDAF80/end_screen.vert"},
+												{ShaderType::fragment, "EDAF80/end_screen.frag"}},
+											 end_screen_shader);
+	if(end_screen_shader == 0u)
+		LogError("Failed to load phong shader");
+	
+	
+	// Upload texture for end_screen
+	GLuint end_screen_texture = bonobo::loadTexture2D(config::resources_path("textures/end_screen.png"));
 
 	//
 	// Todo: Load your geometry
@@ -142,184 +182,210 @@ edaf80::Assignment5::run()
 		return;
 	
 	// create skybox geometry and node
-		auto const skybox_shape = parametric_shapes::createSphere(100.0f, 40u, 40u);
-		if (skybox_shape.vao == 0u)
-			return;
+	auto const skybox_shape = parametric_shapes::createSphere(100.0f, 40u, 40u);
+	if (skybox_shape.vao == 0u)
+		return;
+	
+	// create end screen geometry
+	auto const end_screen_shape = parametric_shapes::createQuad(9.0f, 16.0f, 1u, 1u);
+	if (end_screen_shape.vao == 0u)
+		return;
 
-		Node skybox;
-		skybox.set_geometry(skybox_shape);
-		skybox.set_program(&skybox_shader);
-		skybox.add_texture("skybox_texture", skybox_texture_teide, GL_TEXTURE_CUBE_MAP);
+	Node skybox;
+	skybox.set_geometry(skybox_shape);
+	skybox.set_program(&skybox_shader);
+	skybox.add_texture("skybox_texture", skybox_texture_teide, GL_TEXTURE_CUBE_MAP);
 
-		auto cube = Node();
-		cube.set_geometry(cube_shape);
-		cube.set_program(&cube_shader, set_cube_uniforms);
+	auto cube = Node();
+	cube.set_geometry(cube_shape);
+	cube.set_program(&cube_shader, set_cube_uniforms);
+	
+	// Set the material constants for the sphere/player
+	bonobo::material_data demo_material;
+	demo_material.ambient = glm::vec3(0.1f, 0.1f, 0.1f);
+	demo_material.diffuse = glm::vec3(0.7f, 0.2f, 0.4f);
+	demo_material.specular = glm::vec3(1.0f, 1.0f, 1.0f);
+	demo_material.shininess = 10.0f;
 
-		auto sphere = Node();
-		sphere.set_geometry(sphere_shape);
-		sphere.set_program(&diffuse_shader, set_diffuse_uniforms);
+	auto sphere = Node();
+	sphere.set_geometry(sphere_shape);
+	sphere.set_material_constants(demo_material);
+	sphere.set_program(&phong_shader, phong_set_uniforms);
+	//Add textures to the sphere
+	sphere.add_texture("diffuse_texture", diffuse_texture, GL_TEXTURE_2D);
+	sphere.add_texture("specular_map", specular_map, GL_TEXTURE_2D);
+	sphere.add_texture("normal_map", normal_map, GL_TEXTURE_2D);
+	
+	
+	// end screen node
+	auto end_screen = Node();
+	end_screen.set_geometry(end_screen_shape);
+	end_screen.get_transform().SetRotateX(-glm::half_pi<float>() - 0.25f);
+	end_screen.get_transform().SetScale(glm::vec3(0.1f));
+	end_screen.set_program(&end_screen_shader);
+	end_screen.add_texture("screen_texture", end_screen_texture, GL_TEXTURE_2D);
 
-		// road track and side rails
-		auto road = Node();
-		road.set_geometry(cube_shape);
-		road.set_program(&diffuse_shader, set_diffuse_uniforms);
-		road.get_transform().SetTranslate(glm::vec3(0.0f, -0.55f, -25.0f));
-		road.get_transform().SetScale(glm::vec3(6.5f, 0.1f, 80.0f));
+	// road track and side rails
+	auto road = Node();
+	road.set_geometry(cube_shape);
+	road.set_program(&diffuse_shader, set_diffuse_uniforms);
+	road.get_transform().SetTranslate(glm::vec3(0.0f, -0.55f, -25.0f));
+	road.get_transform().SetScale(glm::vec3(10.0f, 0.1f, 80.0f));
 
-		auto left_rail = Node();
-		left_rail.set_geometry(cube_shape);
-		left_rail.set_program(&diffuse_shader, set_diffuse_uniforms);
-		left_rail.get_transform().SetTranslate(glm::vec3(-3.3f, -0.4f, -25.0f));
-		left_rail.get_transform().SetScale(glm::vec3(0.15f, 0.4f, 80.0f));
+	auto left_rail = Node();
+	left_rail.set_geometry(cube_shape);
+	left_rail.set_program(&diffuse_shader, set_diffuse_uniforms);
+	left_rail.get_transform().SetTranslate(glm::vec3(-5.1f, -0.4f, -25.0f));
+	left_rail.get_transform().SetScale(glm::vec3(0.15f, 0.4f, 80.0f));
 
-		auto right_rail = Node();
-		right_rail.set_geometry(cube_shape);
-		right_rail.set_program(&diffuse_shader, set_diffuse_uniforms);
-		right_rail.get_transform().SetTranslate(glm::vec3(3.3f, -0.4f, -25.0f));
-		right_rail.get_transform().SetScale(glm::vec3(0.15f, 0.4f, 80.0f));
+	auto right_rail = Node();
+	right_rail.set_geometry(cube_shape);
+	right_rail.set_program(&diffuse_shader, set_diffuse_uniforms);
+	right_rail.get_transform().SetTranslate(glm::vec3(5.1f, -0.4f, -25.0f));
+	right_rail.get_transform().SetScale(glm::vec3(0.15f, 0.4f, 80.0f));
 
-		// obstacle management based on standard object pooling tutorial
-		struct Obstacle {
-			glm::vec3 position{ 0.0f };
-			glm::vec3 scale{ 1.0f };
-			glm::vec3 color{ 1.0f };
-			bool active{ false }; // hide and unhide state
-			bool moving{ false };
-			float move_base_x{ 0.0f };
-			float move_phase{ 0.0f };
-			float move_speed{ 2.5f };
-		};
+	// obstacle management based on standard object pooling tutorial
+	struct Obstacle {
+		glm::vec3 position{ 0.0f };
+		glm::vec3 scale{ 1.0f };
+		glm::vec3 color{ 1.0f };
+		bool active{ false }; // hide and unhide state
+		bool moving{ false };
+		float move_base_x{ 0.0f };
+		float move_phase{ 0.0f };
+		float move_speed{ 2.5f };
+	};
 
-		struct ObstacleManager {
-			std::vector<Obstacle> pool;
-			float lanes[3] = { -2.0f, 0.0f, 2.0f };
-			float spawn_z = -50.0f;
-			float cube_speed = 16.0f;
-			float spawn_timer = 0.0f;
-			float spawn_interval = 1.3f;
+	struct ObstacleManager {
+		std::vector<Obstacle> pool;
+		float lanes[5] = { -4.0f, -2.0f, 0.0f, 2.0f, 4.0f };
+		float spawn_z = -50.0f;
+		float cube_speed = 16.0f;
+		float spawn_timer = 0.0f;
+		float spawn_interval = 1.3f;
 
-			ObstacleManager(size_t pool_size = 30) {
-				pool.resize(pool_size);
-			}
+		ObstacleManager(size_t pool_size = 30) {
+			pool.resize(pool_size);
+		}
 
-			// 4. (hide&unhide) regeneration randomly: reuse inactive cube from pool
-			void spawn_cube(float x, float z, bool moving = false, float phase = 0.0f) {
-				for (auto& obs : pool) {
-					if (!obs.active) {
-						obs.active = true; // unhide
-						obs.position = glm::vec3(x, 0.0f, z);
-						obs.scale = glm::vec3(1.0f);
-						obs.moving = moving;
-						obs.move_base_x = x;
-						obs.move_phase = phase;
-						obs.move_speed = 2.5f;
-						// Set the color of this obstacle to a random color
-						obs.color = glm::vec3(
-											  static_cast<float>(rand()) / RAND_MAX,
-											  static_cast<float>(rand()) / RAND_MAX,
-											  static_cast<float>(rand()) / RAND_MAX
-											  );
-						return;
-					}
+		// 4. (hide&unhide) regeneration randomly: reuse inactive cube from pool
+		void spawn_cube(float x, float z, bool moving = false, float phase = 0.0f) {
+			for (auto& obs : pool) {
+				if (!obs.active) {
+					obs.active = true; // unhide
+					obs.position = glm::vec3(x, 0.0f, z);
+					obs.scale = glm::vec3(1.0f);
+					obs.moving = moving;
+					obs.move_base_x = x;
+					obs.move_phase = phase;
+					obs.move_speed = 2.5f;
+					// Set the color of this obstacle to a random color
+					obs.color = glm::vec3(
+										  static_cast<float>(rand()) / RAND_MAX,
+										  static_cast<float>(rand()) / RAND_MAX,
+										  static_cast<float>(rand()) / RAND_MAX
+										  );
+					return;
 				}
 			}
+		}
 
-			// 2. make a "pattern" for movement: procedural waves with safe passages
-			void spawn_wave(float current_time) {
-				int const pattern = std::rand() % 7;
-				switch (pattern) {
-					case 0: // single cube on left lane
-						spawn_cube(lanes[0], spawn_z);
-						break;
-					case 1: // single cube on center lane
-						spawn_cube(lanes[1], spawn_z);
-						break;
-					case 2: // single cube on right lane
-						spawn_cube(lanes[2], spawn_z);
-						break;
-					case 3: // double cube: left and center blocked, right is free
-						spawn_cube(lanes[0], spawn_z);
-						spawn_cube(lanes[1], spawn_z);
-						break;
-					case 4: // double cube: center and right blocked, left is free
-						spawn_cube(lanes[1], spawn_z);
-						spawn_cube(lanes[2], spawn_z);
-						break;
-					case 5: // double cube: left and right blocked, center is free
-						spawn_cube(lanes[0], spawn_z);
-						spawn_cube(lanes[2], spawn_z);
-						break;
-					case 6: // moving oscillating cube in center
-						spawn_cube(lanes[1], spawn_z, true, current_time);
-						break;
-				}
+		// 2. make a "pattern" for movement: procedural waves with safe passages
+		void spawn_wave(float current_time) {
+			int const pattern = std::rand() % 7;
+			switch (pattern) {
+				case 0: // single cube on left lane
+					spawn_cube(lanes[1], spawn_z);
+					break;
+				case 1: // single cube on center lane
+					spawn_cube(lanes[2], spawn_z);
+					break;
+				case 2: // single cube on right lane
+					spawn_cube(lanes[3], spawn_z);
+					break;
+				case 3: // double cube: left and center blocked, right is free
+					spawn_cube(lanes[1], spawn_z);
+					spawn_cube(lanes[2], spawn_z);
+					break;
+				case 4: // double cube: center and right blocked, left is free
+					spawn_cube(lanes[2], spawn_z);
+					spawn_cube(lanes[3], spawn_z);
+					break;
+				case 5: // double cube: left and right blocked, center is free
+					spawn_cube(lanes[1], spawn_z);
+					spawn_cube(lanes[3], spawn_z);
+					break;
+				case 6: // moving oscillating cube in center
+					spawn_cube(lanes[2], spawn_z, true, current_time);
+					break;
 			}
+		}
 
-			// 1. motivate cube to move: move cubes towards player and hide when passed
-			int update(float dt_s, float total_time) {
-				int dodged_count = 0;
+		// 1. motivate cube to move: move cubes towards player and hide when passed
+		int update(float dt_s, float total_time) {
+			int dodged_count = 0;
 
-				// update timer and trigger wave patterns
-				spawn_timer += dt_s;
-				if (spawn_timer >= spawn_interval) {
-					spawn_timer = 0.0f;
-					spawn_wave(total_time);
-				}
-
-				// move active cubes forward towards player (+z)
-				for (auto& obs : pool) {
-					if (!obs.active) continue;
-
-					obs.position.z += cube_speed * dt_s;
-
-					// update side-to-side pattern movement
-					if (obs.moving) {
-						obs.position.x = obs.move_base_x + std::sin(total_time * obs.move_speed + obs.move_phase) * 1.5f;
-						obs.position.x = glm::clamp(obs.position.x, -2.5f, 2.5f);
-					}
-
-					// hide when cube passes behind player
-					if (obs.position.z > 4.0f) {
-						obs.active = false; // hide
-						dodged_count++;
-					}
-				}
-				return dodged_count;
-			}
-
-			// reset all obstacles back to hidden state
-			void reset() {
+			// update timer and trigger wave patterns
+			spawn_timer += dt_s;
+			if (spawn_timer >= spawn_interval) {
 				spawn_timer = 0.0f;
-				for (auto& obs : pool) {
-					obs.active = false;
+				spawn_wave(total_time);
+			}
+
+			// move active cubes forward towards player (+z)
+			for (auto& obs : pool) {
+				if (!obs.active) continue;
+
+				obs.position.z += cube_speed * dt_s;
+
+				// update side-to-side pattern movement
+				if (obs.moving) {
+					obs.position.x = obs.move_base_x + std::sin(total_time * obs.move_speed + obs.move_phase) * 1.5f;
+					obs.position.x = glm::clamp(obs.position.x, -4.5f, 4.5f);
+				}
+
+				// hide when cube passes behind player
+				if (obs.position.z > 4.0f) {
+					obs.active = false; // hide
+					dodged_count++;
 				}
 			}
-		};
+			return dodged_count;
+		}
 
-		// player state
-		float player_x = 0.0f;
-		float const player_y = 0.0f;
-		float const player_z = 0.0f;
-		float player_speed = 7.5f;
-		float const player_radius = 0.4f;
+		// reset all obstacles back to hidden state
+		void reset() {
+			spawn_timer = 0.0f;
+			for (auto& obs : pool) {
+				obs.active = false;
+			}
+		}
+	};
 
-		// game state
-		ObstacleManager obstacle_mgr(30);
-		int score = 0;
-		int high_score = 0;
-		bool game_over = false;
-		float total_time = 0.0f;
+	// player state
+	float player_x = 0.0f;
+	float const player_y = 0.0f;
+	float const player_z = 0.0f;
+	float player_speed = 7.5f;
+	float const player_radius = 0.4f;
 
-		auto reset_game = [&]() {
-			game_over = false;
-			score = 0;
-			player_x = 0.0f;
-			obstacle_mgr.reset();
-		};
+	// game state
+	ObstacleManager obstacle_mgr(30);
+	int score = 0;
+	int high_score = 0;
+	bool game_over = false;
+	float total_time = 0.0f;
 
-		glClearDepthf(1.0f);
-		glClearColor(0.12f, 0.12f, 0.14f, 1.0f);
-		glEnable(GL_DEPTH_TEST);
+	auto reset_game = [&]() {
+		game_over = false;
+		score = 0;
+		player_x = 0.0f;
+		obstacle_mgr.reset();
+	};
+
+	glClearDepthf(1.0f);
+	glClearColor(0.12f, 0.12f, 0.14f, 1.0f);
+	glEnable(GL_DEPTH_TEST);
 
 
 	auto lastTime = std::chrono::high_resolution_clock::now();
@@ -359,7 +425,7 @@ edaf80::Assignment5::run()
 				move_dir += 1.0f;
 			}
 			player_x += move_dir * player_speed * dt_s;
-			player_x = glm::clamp(player_x, -2.7f, 2.7f);
+			player_x = glm::clamp(player_x, -4.7f, 4.7f);
 
 			// update obstacles
 			int const dodged = obstacle_mgr.update(dt_s, total_time);
@@ -463,6 +529,16 @@ edaf80::Assignment5::run()
 			// render player sphere
 			sphere.get_transform().SetTranslate(glm::vec3(player_x, player_y, player_z));
 			sphere.render(view_proj);
+			//RENDER END SCREEN TEMP
+			if(game_over){
+				end_screen.get_transform().SetTranslate(camera_position + glm::vec3(-0.85f, -0.75f, -1.3f));
+
+				glDisable(GL_DEPTH_TEST);
+
+				end_screen.render(view_proj);
+
+				glEnable(GL_DEPTH_TEST);
+			}
 		}
 
 
