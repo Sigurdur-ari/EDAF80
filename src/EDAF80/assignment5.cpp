@@ -245,7 +245,7 @@ edaf80::Assignment5::run()
 
 		bonobo::deinit();
 
-		return EXIT_FAILURE;
+		return;
 	}
 	bonobo::mesh_data const& salmon = objects.front();
 	
@@ -329,7 +329,7 @@ edaf80::Assignment5::run()
 		float spawn_timer = 0.0f;
 		float spawn_interval = 1.3f;
 
-		ObstacleManager(size_t pool_size = 30) {
+		ObstacleManager(size_t pool_size = 45) {
 			pool.resize(pool_size);
 		}
 
@@ -355,33 +355,62 @@ edaf80::Assignment5::run()
 			}
 		}
 
-		// 2. make a "pattern" for movement: procedural waves with safe passages
+		// patterns for 5 lanes
 		void spawn_wave(float current_time) {
-			int const pattern = std::rand() % 7;
+			int const pattern = std::rand() % 12;
 			switch (pattern) {
-				case 0: // single cube on left lane
+				case 0: // single cube on random lane
+					spawn_cube(lanes[std::rand() % 5], spawn_z);
+					break;
+				case 1: // two cubes on outer lanes
+					spawn_cube(lanes[0], spawn_z);
+					spawn_cube(lanes[4], spawn_z);
+					break;
+				case 2: // three cubes in middle
 					spawn_cube(lanes[1], spawn_z);
-					break;
-				case 1: // single cube on center lane
-					spawn_cube(lanes[2], spawn_z);
-					break;
-				case 2: // single cube on right lane
-					spawn_cube(lanes[3], spawn_z);
-					break;
-				case 3: // double cube: left and center blocked, right is free
-					spawn_cube(lanes[1], spawn_z);
-					spawn_cube(lanes[2], spawn_z);
-					break;
-				case 4: // double cube: center and right blocked, left is free
 					spawn_cube(lanes[2], spawn_z);
 					spawn_cube(lanes[3], spawn_z);
 					break;
-				case 5: // double cube: left and right blocked, center is free
+				case 3: // wall with center lane open
+					spawn_cube(lanes[0], spawn_z);
 					spawn_cube(lanes[1], spawn_z);
 					spawn_cube(lanes[3], spawn_z);
+					spawn_cube(lanes[4], spawn_z);
 					break;
-				case 6: // moving oscillating cube in center
+				case 4: // wall with left lane open
+					spawn_cube(lanes[1], spawn_z);
+					spawn_cube(lanes[2], spawn_z);
+					spawn_cube(lanes[3], spawn_z);
+					spawn_cube(lanes[4], spawn_z);
+					break;
+				case 5: // wall with right lane open
+					spawn_cube(lanes[0], spawn_z);
+					spawn_cube(lanes[1], spawn_z);
+					spawn_cube(lanes[2], spawn_z);
+					spawn_cube(lanes[3], spawn_z);
+					break;
+				case 6: // checkerboard pattern
+					spawn_cube(lanes[0], spawn_z);
+					spawn_cube(lanes[2], spawn_z);
+					spawn_cube(lanes[4], spawn_z);
+					break;
+				case 7: // block left side
+					spawn_cube(lanes[0], spawn_z);
+					spawn_cube(lanes[1], spawn_z);
+					break;
+				case 8: // block right side
+					spawn_cube(lanes[3], spawn_z);
+					spawn_cube(lanes[4], spawn_z);
+					break;
+				case 9: // moving cube in center
 					spawn_cube(lanes[2], spawn_z, true, current_time);
+					break;
+				case 10: // moving cube on left
+					spawn_cube(lanes[1], spawn_z, true, current_time);
+					break;
+				case 11: // two moving cubes
+					spawn_cube(lanes[1], spawn_z, true, current_time);
+					spawn_cube(lanes[3], spawn_z, true, current_time + 1.57f);
 					break;
 			}
 		}
@@ -435,7 +464,7 @@ edaf80::Assignment5::run()
 	float const player_radius = 0.4f;
 
 	// game state
-	ObstacleManager obstacle_mgr(30);
+	ObstacleManager obstacle_mgr(45);
 	int score = 0;
 	int high_score = 0;
 	bool game_over = false;
