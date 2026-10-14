@@ -127,10 +127,13 @@ edaf80::Assignment5::run()
 		glUniform3f(glGetUniformLocation(program, "camera_position"), camera_position.x, camera_position.y, camera_position.z);
 	};
 	
+	float elapsed_time_s = 0.0f;
 	glm::vec3 current_color = glm::vec3( 1.0f );
 	
-	auto const set_cube_uniforms = [&current_color](GLuint program){
+	// pass time and color to cube shader
+	auto const set_cube_uniforms = [&current_color, &elapsed_time_s](GLuint program){
 		glUniform3f(glGetUniformLocation(program, "random_color"), current_color.r, current_color.g, current_color.b);
+		glUniform1f(glGetUniformLocation(program, "t"), elapsed_time_s);
 	};
 	
 	//Phong uniforms
@@ -189,7 +192,6 @@ edaf80::Assignment5::run()
 
 	
 	//Water uniforms
-	float elapsed_time_s = 0.0f;
 	bool use_reflection = true;
 	bool use_refraction = true;
 	auto const water_set_uniforms = [&elapsed_time_s, &camera_position, &use_normal_mapping, &use_reflection, &use_refraction](GLuint program){
