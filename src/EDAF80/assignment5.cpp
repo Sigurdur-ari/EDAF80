@@ -114,16 +114,17 @@ edaf80::Assignment5::run()
 		);
 	
 		GLuint skybox_texture = bonobo::loadTextureCubeMap(
-			config::resources_path("cubemaps/Maskonaive2/posx.jpg"),
-			config::resources_path("cubemaps/Maskonaive2/negx.jpg"),
-			config::resources_path("cubemaps/Maskonaive2/posy.jpg"),
-			config::resources_path("cubemaps/Maskonaive2/negy.jpg"),
-			config::resources_path("cubemaps/Maskonaive2/posz.jpg"),
-			config::resources_path("cubemaps/Maskonaive2/negz.jpg")
+			config::resources_path("cubemaps/EveningSky/right.png"),
+			config::resources_path("cubemaps/EveningSky/left.png"),
+			config::resources_path("cubemaps/EveningSky/up.png"),
+			config::resources_path("cubemaps/EveningSky/down.png"),
+			config::resources_path("cubemaps/EveningSky/front.png"),
+			config::resources_path("cubemaps/EveningSky/back.png")
 		);
 
-	auto const set_diffuse_uniforms = [](GLuint program){
+	auto const set_diffuse_uniforms = [&camera_position](GLuint program){
 		glUniform3f(glGetUniformLocation(program, "light_position"), 0.0f, 15.0f, 10.0f);
+		glUniform3f(glGetUniformLocation(program, "camera_position"), camera_position.x, camera_position.y, camera_position.z);
 	};
 	
 	glm::vec3 current_color = glm::vec3( 1.0f );
@@ -198,6 +199,17 @@ edaf80::Assignment5::run()
 		glUniform1i(glGetUniformLocation(program, "use_reflection"), use_reflection ? 1 : 0);
 		glUniform1i(glGetUniformLocation(program, "use_refraction"), use_refraction ? 1 : 0);
 	};
+	
+	// Salmon shaders
+	GLuint salmon_shader = 0u;
+	program_manager.CreateAndRegisterProgram("Salmon",
+											 { { ShaderType::vertex, "EDAF80/salmon.vert" },
+											   { ShaderType::fragment, "EDAF80/salmon.frag" } },
+											 salmon_shader);
+	if (salmon_shader == 0u) {
+		LogError("Failed to load salmon shader");
+		return;
+	}
 
 	//
 	// Todo: Load your geometry
@@ -260,14 +272,19 @@ edaf80::Assignment5::run()
 	
 	// Set the material constants for the sphere/player
 	bonobo::material_data demo_material;
-	demo_material.ambient = glm::vec3(0.1f, 0.1f, 0.1f);
-	demo_material.diffuse = glm::vec3(0.7f, 0.2f, 0.4f);
-	demo_material.specular = glm::vec3(1.0f, 1.0f, 1.0f);
-	demo_material.shininess = 10.0f;
+	demo_material.ambient = glm::vec3(0.12f, 0.08f, 0.07f);
+	demo_material.diffuse = glm::vec3(0.85f, 0.58f, 0.48f);
+	demo_material.specular = glm::vec3(0.75f, 0.65f, 0.55f);
+	demo_material.shininess = 24.0f;
 
-	auto sphere = Node();
-	sphere.set_geometry(salmon);
-	sphere.set_program(&diffuse_shader);
+	auto salmon_player = Node();
+	salmon_player.set_geometry(salmon);
+	salmon_player.set_program(&salmon_shader, set_diffuse_uniforms);
+	salmon_player.set_material_constants(demo_material);
+	salmon_player.add_texture("diffuse_texture", diffuse_texture, GL_TEXTURE_2D);
+	salmon_player.add_texture("specular_map", specular_map, GL_TEXTURE_2D);
+	salmon_player.add_texture("skybox_texture", skybox_texture_teide, GL_TEXTURE_CUBE_MAP);
+	
 	/**
 	sphere.set_geometry(sphere_shape);
 	sphere.set_material_constants(demo_material);
@@ -325,15 +342,15 @@ edaf80::Assignment5::run()
 		std::vector<Obstacle> pool;
 		float lanes[5] = { -4.0f, -2.0f, 0.0f, 2.0f, 4.0f };
 		float spawn_z = -50.0f;
-		float cube_speed = 16.0f;
+		float cube_speed = 20.0f;
 		float spawn_timer = 0.0f;
-		float spawn_interval = 1.3f;
+		float spawn_interval = 1.0f;
 
 		ObstacleManager(size_t pool_size = 45) {
 			pool.resize(pool_size);
 		}
 
-		// 4. (hide&unhide) regeneration randomly: reuse inactive cube from pool
+		// Spawn cubes, reuse cubes from pool by looping over inactive cubes.
 		void spawn_cube(float x, float z, bool moving = false, float phase = 0.0f) {
 			for (auto& obs : pool) {
 				if (!obs.active) {
@@ -355,7 +372,7 @@ edaf80::Assignment5::run()
 			}
 		}
 
-		// patterns for 5 lanes
+		// Pattern for 5 lanes
 		void spawn_wave(float current_time) {
 			int const pattern = std::rand() % 12;
 			switch (pattern) {
@@ -415,7 +432,7 @@ edaf80::Assignment5::run()
 			}
 		}
 
-		// 1. motivate cube to move: move cubes towards player and hide when passed
+		// move cubes towards player and hide when passed
 		int update(float dt_s, float total_time) {
 			int dodged_count = 0;
 
@@ -460,7 +477,7 @@ edaf80::Assignment5::run()
 	float player_x = 0.0f;
 	float const player_y = 0.0f;
 	float const player_z = 0.0f;
-	float player_speed = 7.5f;
+	float player_speed = 10.f;
 	float const player_radius = 0.4f;
 
 	// game state
@@ -522,7 +539,7 @@ edaf80::Assignment5::run()
 				move_dir += 1.0f;
 			}
 			player_x += move_dir * player_speed * dt_s;
-			player_x = glm::clamp(player_x, -4.7f, 4.7f);
+			player_x = glm::clamp(player_x, -4.0f, 4.0f);
 
 			// update obstacles
 			int const dodged = obstacle_mgr.update(dt_s, total_time);
@@ -597,9 +614,9 @@ edaf80::Assignment5::run()
 		camera_position = mCamera.mWorld.GetTranslation();
 		
 		// make sphere static based on camera
-		sphere.get_transform().SetTranslate(camera_position + glm::vec3(0.0f, -0.1f, -1.0f));
-		sphere.get_transform().SetRotateY(glm::pi<float>());
-		sphere.get_transform().SetScale(glm::vec3(0.3f));
+		salmon_player.get_transform().SetTranslate(camera_position + glm::vec3(0.0f, -0.1f, -1.0f));
+		salmon_player.get_transform().SetRotateY(glm::pi<float>());
+		salmon_player.get_transform().SetScale(glm::vec3(0.3f));
 
 		if (!shader_reload_failed) {
 			glm::mat4 const view_proj = mCamera.GetWorldToClipMatrix();
@@ -626,8 +643,8 @@ edaf80::Assignment5::run()
 				cube.render(view_proj);
 			}
 			// render player sphere
-			sphere.get_transform().SetTranslate(glm::vec3(player_x, player_y, player_z));
-			sphere.render(view_proj);
+			salmon_player.get_transform().SetTranslate(glm::vec3(player_x, player_y, player_z));
+			salmon_player.render(view_proj);
 			//RENDER END SCREEN TEMP
 			if(game_over){
 				end_screen.get_transform().SetTranslate(camera_position + glm::vec3(-0.85f, -0.75f, -1.3f));
@@ -672,9 +689,11 @@ edaf80::Assignment5::run()
 			ImGui::Separator();
 
 			static int skybox_index = 0;
-			const char* const skybox_options[] = { "Teide (Mountains)", "Nissi Beach" };
-			if (ImGui::Combo("Skybox", &skybox_index, skybox_options, 2)) {
-				skybox.add_texture("skybox_texture", (skybox_index == 0) ? skybox_texture_teide : skybox_texture_beach, GL_TEXTURE_CUBE_MAP);
+			const char* const skybox_options[] = { "Teide (Mountains)", "Nissi Beach", "Evening Sky" };
+			if (ImGui::Combo("Skybox", &skybox_index, skybox_options, 3)) {
+				skybox.add_texture("skybox_texture", (skybox_index == 0) ? skybox_texture_teide : (skybox_index == 1) ? skybox_texture_beach : skybox_texture, GL_TEXTURE_CUBE_MAP);
+				road.add_texture("skybox_texture", (skybox_index == 0) ? skybox_texture_teide : (skybox_index == 1) ? skybox_texture_beach : skybox_texture, GL_TEXTURE_CUBE_MAP);
+				salmon_player.add_texture("skybox_texture", (skybox_index == 0) ? skybox_texture_teide : (skybox_index == 1) ? skybox_texture_beach : skybox_texture, GL_TEXTURE_CUBE_MAP);
 			}
 
 			ImGui::Separator();
