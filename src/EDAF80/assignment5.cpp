@@ -590,6 +590,29 @@ edaf80::Assignment5::run()
 			ImGui::Checkbox("Show basis", &show_basis);
 		}
 		ImGui::End();
+		
+		// ImGui to show score at game over
+		if(game_over){
+			ImGuiWindowFlags flags = ImGuiWindowFlags_NoDecoration |
+			ImGuiWindowFlags_NoBackground |
+			ImGuiWindowFlags_NoInputs |
+			ImGuiWindowFlags_AlwaysAutoResize;
+			
+			ImGui::SetNextWindowPos(ImVec2(870.0f, 300.0f));
+			
+			if(ImGui::Begin("Score", nullptr, flags)){
+				ImGui::SetWindowFontScale(4.0f);
+				ImGui::TextColored(ImVec4(0.0f, 0.0f, 0.0f, 1.0f), "%d", score);
+			}
+			ImGui::End();
+			
+			ImGui::SetNextWindowPos(ImVec2(930.0f, 460.0f));
+			if(ImGui::Begin("High-score", nullptr, flags)){
+				ImGui::SetWindowFontScale(4.0f);
+				ImGui::TextColored(ImVec4(0.0f, 0.0f, 0.0f, 1.0f), "%d", high_score);
+			}
+			ImGui::End();
+		}
 
 		if (show_basis)
 			bonobo::renderBasis(basis_thickness_scale, basis_length_scale, mCamera.GetWorldToClipMatrix());
