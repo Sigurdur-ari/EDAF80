@@ -18,10 +18,16 @@ if (NOT glfw3_FOUND)
 		file (MAKE_DIRECTORY ${glfw_INSTALL_DIR})
 	endif ()
 
+	set (PLATFORM_SPEC)
+	if (CMAKE_GENERATOR_PLATFORM AND NOT CMAKE_GENERATOR MATCHES "Ninja")
+		set (PLATFORM_SPEC -A "${CMAKE_GENERATOR_PLATFORM}")
+	endif ()
+
 	message (STATUS "Setting up CMake for glfw…")
 	execute_process (
 		COMMAND ${CMAKE_COMMAND} -G "${CMAKE_GENERATOR}"
-		                         -A "${CMAKE_GENERATOR_PLATFORM}"
+		                         ${PLATFORM_SPEC}
+		                         -DCMAKE_POLICY_VERSION_MINIMUM=3.5
 		                         -DGLFW_BUILD_DOCS=OFF
 		                         -DGLFW_BUILD_TESTS=OFF
 		                         -DGLFW_BUILD_EXAMPLES=OFF
@@ -54,7 +60,7 @@ if (NOT glfw3_FOUND)
 		                     "Error output: ${stderr}")
 	endif ()
 
-	list (APPEND CMAKE_PREFIX_PATH ${glfw_INSTALL_DIR}/lib/cmake)
+	list (APPEND CMAKE_PREFIX_PATH ${glfw_INSTALL_DIR} ${glfw_INSTALL_DIR}/lib/cmake)
 
 	set (glfw_INSTALL_DIR)
 endif ()

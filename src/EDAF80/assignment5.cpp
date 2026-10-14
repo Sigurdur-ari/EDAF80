@@ -42,13 +42,13 @@ edaf80::Assignment5::~Assignment5()
 void
 edaf80::Assignment5::run()
 {
-	// Set up the camera
+	// set up the camera
 	mCamera.mWorld.SetTranslate(glm::vec3(0.0f, 0.0f, 6.0f));
 	mCamera.mMouseSensitivity = glm::vec2(0.003f);
 	mCamera.mMovementSpeed = glm::vec3(3.0f); // 3 m/s => 10.8 km/h
 	auto camera_position = mCamera.mWorld.GetTranslation();
 
-	// Create the shader programs
+	// create the shader programs
 	ShaderProgramManager program_manager;
 	GLuint fallback_shader = 0u;
 	program_manager.CreateAndRegisterProgram("Fallback",
@@ -169,11 +169,8 @@ edaf80::Assignment5::run()
 	
 	// create cube geometry for obstacles, road, and rails
 	auto const cube_shape = parametric_shapes::createCube(1.0f);
-	
 	if (cube_shape.vao == 0u)
 		return;
-	
-	
 	
 	// Create sphere geometry for player
 	auto const sphere_shape = parametric_shapes::createSphere(0.4f, 24, 24);
@@ -387,7 +384,6 @@ edaf80::Assignment5::run()
 	glClearColor(0.12f, 0.12f, 0.14f, 1.0f);
 	glEnable(GL_DEPTH_TEST);
 
-
 	auto lastTime = std::chrono::high_resolution_clock::now();
 
 	bool show_logs = false;
@@ -476,14 +472,12 @@ edaf80::Assignment5::run()
 		mCamera.mWorld.SetRotateX(-0.25f);
 		mCamera.Update(deltaTimeUs, inputHandler, true, true);
 
+		// third-person camera following the player
+		mCamera.mWorld.SetTranslate(glm::vec3(player_x * 0.35f, 2.3f, 5.5f));
+		mCamera.mWorld.SetRotateX(-0.25f);
+		mCamera.Update(deltaTimeUs, inputHandler, true, true);
 
-		// Retrieve the actual framebuffer size: for HiDPI monitors,
-		// you might end up with a framebuffer larger than what you
-		// actually asked for. For example, if you ask for a 1920x1080
-		// framebuffer, you might get a 3840x2160 one instead.
-		// Also it might change as the user drags the window between
-		// monitors with different DPIs, or if the fullscreen status is
-		// being toggled.
+		// framebuffer size
 		int framebuffer_width, framebuffer_height;
 		glfwGetFramebufferSize(window, &framebuffer_width, &framebuffer_height);
 		glViewport(0, 0, framebuffer_width, framebuffer_height);
@@ -494,13 +488,7 @@ edaf80::Assignment5::run()
 		//
 		
 		mWindowManager.NewImGuiFrame();
-
 		glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
-		
-		camera_position = mCamera.mWorld.GetTranslation();
-		
-		// make sphere static based on camera
-		sphere.get_transform().SetTranslate(camera_position + glm::vec3(0.0f, -0.1f, -1.0f));
 
 		if (!shader_reload_failed) {
 			glm::mat4 const view_proj = mCamera.GetWorldToClipMatrix();
@@ -541,6 +529,10 @@ edaf80::Assignment5::run()
 			}
 		}
 
+			// render player sphere
+			sphere.get_transform().SetTranslate(glm::vec3(player_x, player_y, player_z));
+			sphere.render(view_proj);
+		}
 
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
