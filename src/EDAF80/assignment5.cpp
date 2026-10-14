@@ -112,6 +112,15 @@ edaf80::Assignment5::run()
 			config::resources_path("cubemaps/NissiBeach2/posz.jpg"),
 			config::resources_path("cubemaps/NissiBeach2/negz.jpg")
 		);
+	
+		GLuint skybox_texture = bonobo::loadTextureCubeMap(
+			config::resources_path("cubemaps/Maskonaive2/posx.jpg"),
+			config::resources_path("cubemaps/Maskonaive2/negx.jpg"),
+			config::resources_path("cubemaps/Maskonaive2/posy.jpg"),
+			config::resources_path("cubemaps/Maskonaive2/negy.jpg"),
+			config::resources_path("cubemaps/Maskonaive2/posz.jpg"),
+			config::resources_path("cubemaps/Maskonaive2/negz.jpg")
+		);
 
 	auto const set_diffuse_uniforms = [](GLuint program){
 		glUniform3f(glGetUniformLocation(program, "light_position"), 0.0f, 15.0f, 10.0f);
@@ -140,6 +149,10 @@ edaf80::Assignment5::run()
 	
 	GLuint normal_map = bonobo::loadTexture2D(config::resources_path("textures/leather_red_02_nor_2k.jpg"));
 	
+	// Upload normal mapping texture for water
+	GLuint water_texture = bonobo::loadTexture2D(config::resources_path("textures/waves.png"));
+	
+	
 	// Phong shaders
 	GLuint phong_shader = 0u;
 	program_manager.CreateAndRegisterProgram("Phong",
@@ -162,6 +175,29 @@ edaf80::Assignment5::run()
 	
 	// Upload texture for end_screen
 	GLuint end_screen_texture = bonobo::loadTexture2D(config::resources_path("textures/end_screen.png"));
+	
+	
+	// Water shaders
+	GLuint water_shader = 0u;
+	program_manager.CreateAndRegisterProgram("Water",
+											 {	{ShaderType::vertex, "EDAF80/game_water.vert"},
+												{ShaderType::fragment, "EDAF80/game_water.frag"}},
+											 water_shader);
+	if(water_shader == 0u)
+		LogError("Failed to load water shader");
+
+	
+	//Water uniforms
+	float elapsed_time_s = 0.0f;
+	bool use_reflection = true;
+	bool use_refraction = true;
+	auto const water_set_uniforms = [&elapsed_time_s, &camera_position, &use_normal_mapping, &use_reflection, &use_refraction](GLuint program){
+		glUniform1f(glGetUniformLocation(program, "t"), elapsed_time_s);
+		glUniform3f(glGetUniformLocation(program, "camera_position"), camera_position.x, camera_position.y, camera_position.z);
+		glUniform1i(glGetUniformLocation(program, "use_normal_mapping"), use_normal_mapping ? 1 : 0);
+		glUniform1i(glGetUniformLocation(program, "use_reflection"), use_reflection ? 1 : 0);
+		glUniform1i(glGetUniformLocation(program, "use_refraction"), use_refraction ? 1 : 0);
+	};
 
 	//
 	// Todo: Load your geometry
@@ -171,6 +207,13 @@ edaf80::Assignment5::run()
 	auto const cube_shape = parametric_shapes::createCube(1.0f);
 	
 	if (cube_shape.vao == 0u)
+		return;
+	
+	// Create quad geometry for water
+	// Create quad for waves
+	auto const water_shape = parametric_shapes::createQuad(10.0f, 80.0f ,1000, 1000);
+	
+	if (water_shape.vao == 0u)
 		return;
 	
 	
@@ -191,13 +234,14 @@ edaf80::Assignment5::run()
 	if (end_screen_shape.vao == 0u)
 		return;
 
+	
 	// SALMON
 	//
 	// Load the salmon geometry
 	//
 	std::vector<bonobo::mesh_data> const objects = bonobo::loadObjects(config::resources_path("scenes/Salmon.obj"));
 	if (objects.empty()) {
-		LogError("Failed to load the sphere geometry: exiting.");
+		LogError("Failed to load the salmon geometry: exiting.");
 
 		bonobo::deinit();
 
@@ -223,7 +267,7 @@ edaf80::Assignment5::run()
 
 	auto sphere = Node();
 	sphere.set_geometry(salmon);
-	sphere.set_program(&fallback_shader);
+	sphere.set_program(&diffuse_shader);
 	/**
 	sphere.set_geometry(sphere_shape);
 	sphere.set_material_constants(demo_material);
@@ -245,10 +289,13 @@ edaf80::Assignment5::run()
 
 	// road track and side rails
 	auto road = Node();
-	road.set_geometry(cube_shape);
-	road.set_program(&diffuse_shader, set_diffuse_uniforms);
-	road.get_transform().SetTranslate(glm::vec3(0.0f, -0.55f, -25.0f));
-	road.get_transform().SetScale(glm::vec3(10.0f, 0.1f, 80.0f));
+	road.set_geometry(water_shape);
+	road.set_program(&water_shader, water_set_uniforms);
+	road.get_transform().SetTranslate(glm::vec3(5.0f, -0.5f, -75.0f));
+	road.get_transform().SetRotateY(-glm::half_pi<float>());
+	//road.get_transform().SetScale(glm::vec3(0.1f, 1.0f, 0.8f));
+	road.add_texture("skybox_texture", skybox_texture_teide, GL_TEXTURE_CUBE_MAP);
+	road.add_texture("wave_texture", water_texture, GL_TEXTURE_2D);
 
 	auto left_rail = Node();
 	left_rail.set_geometry(cube_shape);
@@ -427,6 +474,9 @@ edaf80::Assignment5::run()
 
 		glfwPollEvents();
 		inputHandler.Advance();
+		
+		//Update time variable
+		elapsed_time_s += std::chrono::duration<float>(deltaTimeUs).count();
 		
 		// game update
 		if (!game_over) {
