@@ -69,54 +69,123 @@ edaf80::Assignment5::run()
 		LogError("Failed to load diffuse shader");
 		return;
 	}
+	
+	GLuint cube_shader = 0u;
+	program_manager.CreateAndRegisterProgram("Cube",
+											 { { ShaderType::vertex, "EDAF80/cube.vert" },
+											   { ShaderType::fragment, "EDAF80/cube.frag" } },
+											 cube_shader);
+	if (cube_shader == 0u)
+		LogError("Failed to load cube shader");
 
+	//
+	// Todo: Insert the creation of other shader programs.
+	//       (Check how it was done in assignment 3.)
+	//
+	
 	// register Skybox shader
-	GLuint skybox_shader = 0u;
-	program_manager.CreateAndRegisterProgram("Skybox",
-	                                         { { ShaderType::vertex, "EDAF80/skybox.vert" },
-	                                           { ShaderType::fragment, "EDAF80/skybox.frag" } },
-	                                         skybox_shader);
-	if (skybox_shader == 0u) {
-		LogError("Failed to load skybox shader");
-		return;
-	}
+		GLuint skybox_shader = 0u;
+		program_manager.CreateAndRegisterProgram("Skybox",
+												 { { ShaderType::vertex, "EDAF80/skybox.vert" },
+												   { ShaderType::fragment, "EDAF80/skybox.frag" } },
+												 skybox_shader);
+		if (skybox_shader == 0u) {
+			LogError("Failed to load skybox shader");
+			return;
+		}
 
-	// load cubemap textures for Skybox
-	GLuint skybox_texture_teide = bonobo::loadTextureCubeMap(
-		config::resources_path("cubemaps/Teide/posx.jpg"),
-		config::resources_path("cubemaps/Teide/negx.jpg"),
-		config::resources_path("cubemaps/Teide/posy.jpg"),
-		config::resources_path("cubemaps/Teide/negy.jpg"),
-		config::resources_path("cubemaps/Teide/posz.jpg"),
-		config::resources_path("cubemaps/Teide/negz.jpg")
-	);
+		// load cubemap textures for Skybox
+		GLuint skybox_texture_teide = bonobo::loadTextureCubeMap(
+			config::resources_path("cubemaps/Teide/posx.jpg"),
+			config::resources_path("cubemaps/Teide/negx.jpg"),
+			config::resources_path("cubemaps/Teide/posy.jpg"),
+			config::resources_path("cubemaps/Teide/negy.jpg"),
+			config::resources_path("cubemaps/Teide/posz.jpg"),
+			config::resources_path("cubemaps/Teide/negz.jpg")
+		);
 
-	GLuint skybox_texture_beach = bonobo::loadTextureCubeMap(
-		config::resources_path("cubemaps/NissiBeach2/posx.jpg"),
-		config::resources_path("cubemaps/NissiBeach2/negx.jpg"),
-		config::resources_path("cubemaps/NissiBeach2/posy.jpg"),
-		config::resources_path("cubemaps/NissiBeach2/negy.jpg"),
-		config::resources_path("cubemaps/NissiBeach2/posz.jpg"),
-		config::resources_path("cubemaps/NissiBeach2/negz.jpg")
-	);
+		GLuint skybox_texture_beach = bonobo::loadTextureCubeMap(
+			config::resources_path("cubemaps/NissiBeach2/posx.jpg"),
+			config::resources_path("cubemaps/NissiBeach2/negx.jpg"),
+			config::resources_path("cubemaps/NissiBeach2/posy.jpg"),
+			config::resources_path("cubemaps/NissiBeach2/negy.jpg"),
+			config::resources_path("cubemaps/NissiBeach2/posz.jpg"),
+			config::resources_path("cubemaps/NissiBeach2/negz.jpg")
+		);
 
 	auto const set_diffuse_uniforms = [](GLuint program){
 		glUniform3f(glGetUniformLocation(program, "light_position"), 0.0f, 15.0f, 10.0f);
 	};
+	
+	glm::vec3 current_color = glm::vec3( 1.0f );
+	
+	auto const set_cube_uniforms = [&current_color](GLuint program){
+		glUniform3f(glGetUniformLocation(program, "random_color"), current_color.r, current_color.g, current_color.b);
+	};
+	
+	//Phong uniforms
+	bool use_normal_mapping = true;
+	auto const phong_set_uniforms = [&use_normal_mapping,&camera_position](GLuint program){
+		glUniform1i(glGetUniformLocation(program, "use_normal_mapping"), use_normal_mapping ? 1 : 0);
+		glUniform3f(glGetUniformLocation(program, "light_position"), 0.0f, 15.0f, 10.0f);
+		glUniform3f(glGetUniformLocation(program, "camera_position"), camera_position.x, camera_position.y, camera_position.z);
+	};
+	
+	
+	//Upload sphere textures
+	
+	GLuint diffuse_texture = bonobo::loadTexture2D(config::resources_path("textures/leather_red_02_coll1_2k.jpg"));
+	
+	GLuint specular_map = bonobo::loadTexture2D(config::resources_path("textures/leather_red_02_rough_2k.jpg"));
+	
+	GLuint normal_map = bonobo::loadTexture2D(config::resources_path("textures/leather_red_02_nor_2k.jpg"));
+	
+	// Phong shaders
+	GLuint phong_shader = 0u;
+	program_manager.CreateAndRegisterProgram("Phong",
+											 {	{ShaderType::vertex, "EDAF80/phong.vert"},
+												{ShaderType::fragment, "EDAF80/phong.frag"}},
+											 phong_shader);
+	if(phong_shader == 0u)
+		LogError("Failed to load phong shader");
+	
+	
+	// End screen shaders
+	GLuint end_screen_shader = 0u;
+	program_manager.CreateAndRegisterProgram("End Screen",
+											 {	{ShaderType::vertex, "EDAF80/end_screen.vert"},
+												{ShaderType::fragment, "EDAF80/end_screen.frag"}},
+											 end_screen_shader);
+	if(end_screen_shader == 0u)
+		LogError("Failed to load phong shader");
+	
+	
+	// Upload texture for end_screen
+	GLuint end_screen_texture = bonobo::loadTexture2D(config::resources_path("textures/end_screen.png"));
 
+	//
+	// Todo: Load your geometry
+	//
+	
 	// create cube geometry for obstacles, road, and rails
 	auto const cube_shape = parametric_shapes::createCube(1.0f);
 	if (cube_shape.vao == 0u)
 		return;
-
-	// create sphere geometry for player
+	
+	// Create sphere geometry for player
 	auto const sphere_shape = parametric_shapes::createSphere(0.4f, 24, 24);
+	
 	if (sphere_shape.vao == 0u)
 		return;
-
+	
 	// create skybox geometry and node
 	auto const skybox_shape = parametric_shapes::createSphere(100.0f, 40u, 40u);
 	if (skybox_shape.vao == 0u)
+		return;
+	
+	// create end screen geometry
+	auto const end_screen_shape = parametric_shapes::createQuad(9.0f, 16.0f, 1u, 1u);
+	if (end_screen_shape.vao == 0u)
 		return;
 
 	Node skybox;
@@ -126,35 +195,57 @@ edaf80::Assignment5::run()
 
 	auto cube = Node();
 	cube.set_geometry(cube_shape);
-	cube.set_program(&diffuse_shader, set_diffuse_uniforms);
+	cube.set_program(&cube_shader, set_cube_uniforms);
+	
+	// Set the material constants for the sphere/player
+	bonobo::material_data demo_material;
+	demo_material.ambient = glm::vec3(0.1f, 0.1f, 0.1f);
+	demo_material.diffuse = glm::vec3(0.7f, 0.2f, 0.4f);
+	demo_material.specular = glm::vec3(1.0f, 1.0f, 1.0f);
+	demo_material.shininess = 10.0f;
 
 	auto sphere = Node();
 	sphere.set_geometry(sphere_shape);
-	sphere.set_program(&diffuse_shader, set_diffuse_uniforms);
+	sphere.set_material_constants(demo_material);
+	sphere.set_program(&phong_shader, phong_set_uniforms);
+	//Add textures to the sphere
+	sphere.add_texture("diffuse_texture", diffuse_texture, GL_TEXTURE_2D);
+	sphere.add_texture("specular_map", specular_map, GL_TEXTURE_2D);
+	sphere.add_texture("normal_map", normal_map, GL_TEXTURE_2D);
+	
+	
+	// end screen node
+	auto end_screen = Node();
+	end_screen.set_geometry(end_screen_shape);
+	end_screen.get_transform().SetRotateX(-glm::half_pi<float>() - 0.25f);
+	end_screen.get_transform().SetScale(glm::vec3(0.1f));
+	end_screen.set_program(&end_screen_shader);
+	end_screen.add_texture("screen_texture", end_screen_texture, GL_TEXTURE_2D);
 
 	// road track and side rails
 	auto road = Node();
 	road.set_geometry(cube_shape);
 	road.set_program(&diffuse_shader, set_diffuse_uniforms);
 	road.get_transform().SetTranslate(glm::vec3(0.0f, -0.55f, -25.0f));
-	road.get_transform().SetScale(glm::vec3(6.5f, 0.1f, 80.0f));
+	road.get_transform().SetScale(glm::vec3(10.0f, 0.1f, 80.0f));
 
 	auto left_rail = Node();
 	left_rail.set_geometry(cube_shape);
 	left_rail.set_program(&diffuse_shader, set_diffuse_uniforms);
-	left_rail.get_transform().SetTranslate(glm::vec3(-3.3f, -0.4f, -25.0f));
+	left_rail.get_transform().SetTranslate(glm::vec3(-5.1f, -0.4f, -25.0f));
 	left_rail.get_transform().SetScale(glm::vec3(0.15f, 0.4f, 80.0f));
 
 	auto right_rail = Node();
 	right_rail.set_geometry(cube_shape);
 	right_rail.set_program(&diffuse_shader, set_diffuse_uniforms);
-	right_rail.get_transform().SetTranslate(glm::vec3(3.3f, -0.4f, -25.0f));
+	right_rail.get_transform().SetTranslate(glm::vec3(5.1f, -0.4f, -25.0f));
 	right_rail.get_transform().SetScale(glm::vec3(0.15f, 0.4f, 80.0f));
 
 	// obstacle management based on standard object pooling tutorial
 	struct Obstacle {
 		glm::vec3 position{ 0.0f };
 		glm::vec3 scale{ 1.0f };
+		glm::vec3 color{ 1.0f };
 		bool active{ false }; // hide and unhide state
 		bool moving{ false };
 		float move_base_x{ 0.0f };
@@ -164,7 +255,7 @@ edaf80::Assignment5::run()
 
 	struct ObstacleManager {
 		std::vector<Obstacle> pool;
-		float lanes[3] = { -2.0f, 0.0f, 2.0f };
+		float lanes[5] = { -4.0f, -2.0f, 0.0f, 2.0f, 4.0f };
 		float spawn_z = -50.0f;
 		float cube_speed = 16.0f;
 		float spawn_timer = 0.0f;
@@ -185,6 +276,12 @@ edaf80::Assignment5::run()
 					obs.move_base_x = x;
 					obs.move_phase = phase;
 					obs.move_speed = 2.5f;
+					// Set the color of this obstacle to a random color
+					obs.color = glm::vec3(
+										  static_cast<float>(rand()) / RAND_MAX,
+										  static_cast<float>(rand()) / RAND_MAX,
+										  static_cast<float>(rand()) / RAND_MAX
+										  );
 					return;
 				}
 			}
@@ -195,28 +292,28 @@ edaf80::Assignment5::run()
 			int const pattern = std::rand() % 7;
 			switch (pattern) {
 				case 0: // single cube on left lane
-					spawn_cube(lanes[0], spawn_z);
+					spawn_cube(lanes[1], spawn_z);
 					break;
 				case 1: // single cube on center lane
-					spawn_cube(lanes[1], spawn_z);
+					spawn_cube(lanes[2], spawn_z);
 					break;
 				case 2: // single cube on right lane
-					spawn_cube(lanes[2], spawn_z);
+					spawn_cube(lanes[3], spawn_z);
 					break;
 				case 3: // double cube: left and center blocked, right is free
-					spawn_cube(lanes[0], spawn_z);
 					spawn_cube(lanes[1], spawn_z);
+					spawn_cube(lanes[2], spawn_z);
 					break;
 				case 4: // double cube: center and right blocked, left is free
-					spawn_cube(lanes[1], spawn_z);
 					spawn_cube(lanes[2], spawn_z);
+					spawn_cube(lanes[3], spawn_z);
 					break;
 				case 5: // double cube: left and right blocked, center is free
-					spawn_cube(lanes[0], spawn_z);
-					spawn_cube(lanes[2], spawn_z);
+					spawn_cube(lanes[1], spawn_z);
+					spawn_cube(lanes[3], spawn_z);
 					break;
 				case 6: // moving oscillating cube in center
-					spawn_cube(lanes[1], spawn_z, true, current_time);
+					spawn_cube(lanes[2], spawn_z, true, current_time);
 					break;
 			}
 		}
@@ -241,7 +338,7 @@ edaf80::Assignment5::run()
 				// update side-to-side pattern movement
 				if (obs.moving) {
 					obs.position.x = obs.move_base_x + std::sin(total_time * obs.move_speed + obs.move_phase) * 1.5f;
-					obs.position.x = glm::clamp(obs.position.x, -2.5f, 2.5f);
+					obs.position.x = glm::clamp(obs.position.x, -4.5f, 4.5f);
 				}
 
 				// hide when cube passes behind player
@@ -300,6 +397,7 @@ edaf80::Assignment5::run()
 		auto const nowTime = std::chrono::high_resolution_clock::now();
 		auto const deltaTimeUs = std::chrono::duration_cast<std::chrono::microseconds>(nowTime - lastTime);
 		lastTime = nowTime;
+		
 		float const dt_s = static_cast<float>(deltaTimeUs.count()) / 1000000.0f;
 
 		auto& io = ImGui::GetIO();
@@ -307,7 +405,7 @@ edaf80::Assignment5::run()
 
 		glfwPollEvents();
 		inputHandler.Advance();
-
+		
 		// game update
 		if (!game_over) {
 			total_time += dt_s;
@@ -315,15 +413,15 @@ edaf80::Assignment5::run()
 			// move player sphere left / right
 			float move_dir = 0.0f;
 			if ((inputHandler.GetKeycodeState(GLFW_KEY_A) & PRESSED) ||
-			    (inputHandler.GetKeycodeState(GLFW_KEY_LEFT) & PRESSED)) {
+				(inputHandler.GetKeycodeState(GLFW_KEY_LEFT) & PRESSED)) {
 				move_dir -= 1.0f;
 			}
 			if ((inputHandler.GetKeycodeState(GLFW_KEY_D) & PRESSED) ||
-			    (inputHandler.GetKeycodeState(GLFW_KEY_RIGHT) & PRESSED)) {
+				(inputHandler.GetKeycodeState(GLFW_KEY_RIGHT) & PRESSED)) {
 				move_dir += 1.0f;
 			}
 			player_x += move_dir * player_speed * dt_s;
-			player_x = glm::clamp(player_x, -2.7f, 2.7f);
+			player_x = glm::clamp(player_x, -4.7f, 4.7f);
 
 			// update obstacles
 			int const dodged = obstacle_mgr.update(dt_s, total_time);
@@ -341,7 +439,7 @@ edaf80::Assignment5::run()
 				float const dx = std::abs(player_pos.x - obs.position.x);
 				float const dz = std::abs(player_pos.z - obs.position.z);
 				if (dx < (cube_half + player_radius * 0.85f) &&
-				    dz < (cube_half + player_radius * 0.85f)) {
+					dz < (cube_half + player_radius * 0.85f)) {
 					game_over = true;
 					break;
 				}
@@ -355,18 +453,24 @@ edaf80::Assignment5::run()
 			} else {
 				shader_reload_failed = !program_manager.ReloadAllPrograms();
 				if (shader_reload_failed)
-					tinyfd_notifyPopup("Shader Program Reload Error",
-					                   "An error occurred while reloading shader programs; see the logs for details.\n"
-					                   "Rendering is suspended until the issue is solved. Once fixed, just reload the shaders again.",
-					                   "error");
+						tinyfd_notifyPopup("Shader Program Reload Error",
+									"An error occurred while reloading shader programs; see the logs for details.\n"
+									"Rendering is suspended until the issue is solved. Once fixed, just reload the shaders again.",
+									"error");
 			}
 		}
+		
 		if (inputHandler.GetKeycodeState(GLFW_KEY_F3) & JUST_RELEASED)
 			show_logs = !show_logs;
 		if (inputHandler.GetKeycodeState(GLFW_KEY_F2) & JUST_RELEASED)
 			show_gui = !show_gui;
 		if (inputHandler.GetKeycodeState(GLFW_KEY_F11) & JUST_RELEASED)
 			mWindowManager.ToggleFullscreenStatusForWindow(window);
+		
+		// third-person camera following the player
+		mCamera.mWorld.SetTranslate(glm::vec3(player_x * 0.35f, 2.3f, 5.5f));
+		mCamera.mWorld.SetRotateX(-0.25f);
+		mCamera.Update(deltaTimeUs, inputHandler, true, true);
 
 		// third-person camera following the player
 		mCamera.mWorld.SetTranslate(glm::vec3(player_x * 0.35f, 2.3f, 5.5f));
@@ -378,31 +482,52 @@ edaf80::Assignment5::run()
 		glfwGetFramebufferSize(window, &framebuffer_width, &framebuffer_height);
 		glViewport(0, 0, framebuffer_width, framebuffer_height);
 
+
+		//
+		// Todo: If you need to handle inputs, you can do it here
+		//
+		
 		mWindowManager.NewImGuiFrame();
 		glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
 		if (!shader_reload_failed) {
 			glm::mat4 const view_proj = mCamera.GetWorldToClipMatrix();
-
+			
 			// render skybox at infinite depth
 			glDisable(GL_DEPTH_TEST);
 			glDisable(GL_CULL_FACE);
 			skybox.get_transform().SetTranslate(mCamera.mWorld.GetTranslation());
 			skybox.render(view_proj);
 			glEnable(GL_DEPTH_TEST);
-
+			
 			// render track & rails
 			road.render(view_proj);
 			left_rail.render(view_proj);
 			right_rail.render(view_proj);
-
+			
 			// render active (unhidden) obstacles
 			for (auto const& obs : obstacle_mgr.pool) {
 				if (!obs.active) continue;
 				cube.get_transform().SetTranslate(obs.position);
 				cube.get_transform().SetScale(obs.scale);
+				// Set the current random color to this cube
+				current_color = obs.color;
 				cube.render(view_proj);
 			}
+			// render player sphere
+			sphere.get_transform().SetTranslate(glm::vec3(player_x, player_y, player_z));
+			sphere.render(view_proj);
+			//RENDER END SCREEN TEMP
+			if(game_over){
+				end_screen.get_transform().SetTranslate(camera_position + glm::vec3(-0.85f, -0.75f, -1.3f));
+
+				glDisable(GL_DEPTH_TEST);
+
+				end_screen.render(view_proj);
+
+				glEnable(GL_DEPTH_TEST);
+			}
+		}
 
 			// render player sphere
 			sphere.get_transform().SetTranslate(glm::vec3(player_x, player_y, player_z));
@@ -411,9 +536,16 @@ edaf80::Assignment5::run()
 
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
+		//
+		// Todo: If you want a custom ImGUI window, you can set it up
+		//       here
+		//
+		
 		// imgui hud & controls
 		bool const opened = ImGui::Begin("Game HUD", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
+		
 		if (opened) {
+			
 			if (game_over) {
 				ImGui::TextColored(ImVec4(1.0f, 0.2f, 0.2f, 1.0f), "=== GAME OVER! ===");
 				ImGui::Text("Press 'R' or click button to restart");
@@ -446,9 +578,33 @@ edaf80::Assignment5::run()
 			if (ImGui::Button("Reset Game")) {
 				reset_game();
 			}
+			
 			ImGui::Checkbox("Show basis", &show_basis);
 		}
 		ImGui::End();
+		
+		// ImGui to show score at game over
+		if(game_over){
+			ImGuiWindowFlags flags = ImGuiWindowFlags_NoDecoration |
+			ImGuiWindowFlags_NoBackground |
+			ImGuiWindowFlags_NoInputs |
+			ImGuiWindowFlags_AlwaysAutoResize;
+			
+			ImGui::SetNextWindowPos(ImVec2(870.0f, 300.0f));
+			
+			if(ImGui::Begin("Score", nullptr, flags)){
+				ImGui::SetWindowFontScale(4.0f);
+				ImGui::TextColored(ImVec4(0.0f, 0.0f, 0.0f, 1.0f), "%d", score);
+			}
+			ImGui::End();
+			
+			ImGui::SetNextWindowPos(ImVec2(930.0f, 460.0f));
+			if(ImGui::Begin("High-score", nullptr, flags)){
+				ImGui::SetWindowFontScale(4.0f);
+				ImGui::TextColored(ImVec4(0.0f, 0.0f, 0.0f, 1.0f), "%d", high_score);
+			}
+			ImGui::End();
+		}
 
 		if (show_basis)
 			bonobo::renderBasis(basis_thickness_scale, basis_length_scale, mCamera.GetWorldToClipMatrix());
